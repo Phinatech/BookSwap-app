@@ -1,20 +1,18 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/firestore_service.dart';
-import '../models/book.dart';
 
 class BookProvider with ChangeNotifier {
   final _svc = FirestoreService.instance;
   final _auth = FirebaseAuth.instance;
 
-  List<Book> _browse = [];
-  List<Book> _mine = [];
+  List<Map<String, dynamic>> _browse = [];
+  List<Map<String, dynamic>> _mine = [];
 
-  List<Book> get browse => _browse;
-  List<Book> get mine => _mine;
+  List<Map<String, dynamic>> get browse => _browse;
+  List<Map<String, dynamic>> get mine => _mine;
 
   StreamSubscription? _allSub;
   StreamSubscription? _mineSub;
@@ -26,7 +24,7 @@ class BookProvider with ChangeNotifier {
   void _bind() {
     _allSub?.cancel();
     _allSub = _svc.books().listen((s) {
-      _browse = s.docs.map((d) => Book.fromDoc(d)).toList();
+      _browse = s.docs.map((d) => {'id': d.id, ...d.data()}).toList();
       notifyListeners();
     });
 
@@ -34,7 +32,7 @@ class BookProvider with ChangeNotifier {
     final uid = _auth.currentUser?.uid;
     if (uid != null) {
       _mineSub = _svc.booksByOwner(uid).listen((s) {
-        _mine = s.docs.map((d) => Book.fromDoc(d)).toList();
+        _mine = s.docs.map((d) => {'id': d.id, ...d.data()}).toList();
         notifyListeners();
       });
     }
@@ -47,61 +45,62 @@ class BookProvider with ChangeNotifier {
     super.dispose();
   }
 
-  // ------------ CRUD ------------
+  // ------------ CREATE ------------
   Future<void> create({
     required String title,
     required String author,
     required String condition,
     required String swapFor,
-    File? cover,
+    required File imageFile, // CHANGED: require image for safety
   }) async {
     final user = _auth.currentUser!;
-    String imageUrl = '';
-    if (cover != null) {
-      imageUrl = await _svc.uploadCover(cover, user.uid);
-    }
+    // CHANGED: always compute an https URL before saving
+    final imageUrl = await _svc.uploadCover(imageFile, user.uid); // CHANGED
+
     await _svc.createBook({
       'title': title,
       'author': author,
       'condition': condition,
       'swapFor': swapFor,
-      'imageUrl': imageUrl,
+      'imageUrl': imageUrl, // CHANGED: https url only
       'ownerId': user.uid,
       'ownerEmail': user.email ?? '',
       'status': '',
     });
   }
 
+  // ------------ UPDATE ------------
   Future<void> update({
     required String id,
     required String title,
     required String author,
     required String condition,
     required String swapFor,
-    File? cover,
+    File? imageFile,
     String? currentImageUrl,
   }) async {
-    String imageUrl = currentImageUrl ?? '';
-    if (cover != null) {
-      imageUrl = await _svc.uploadCover(cover, _auth.currentUser!.uid);
+    // CHANGED: if new image provided, upload; else keep existing (or empty string)
+    String imageUrl = currentImageUrl ?? ''; // CHANGED
+    if (imageFile != null) {
+      imageUrl = await _svc.uploadCover(imageFile, _auth.currentUser!.uid); // CHANGED
     }
     await _svc.updateBook(id, {
       'title': title,
       'author': author,
       'condition': condition,
       'swapFor': swapFor,
-      'imageUrl': imageUrl,
+      'imageUrl': imageUrl, // CHANGED
     });
   }
 
+  // ------------ DELETE ------------
   Future<void> delete(String id) => _svc.deleteBook(id);
 
-  // ------------ Swap ------------
-  Future<void> requestSwap(Book book) async {
+  // ------------ SWAP ------------
+  Future<void> requestSwap(Map<String, dynamic> book) async {
     final me = _auth.currentUser!;
-    if (me.uid == book.ownerId) return;
-    await _svc.createSwap(bookId: book.id, senderId: me.uid, receiverId: book.ownerId);
-    // Ensure chat thread exists
-    await _svc.ensureThread(me.uid, book.ownerId);
+    if (me.uid == book['ownerId']) return;
+    await _svc.createSwap(bookId: book['id'], senderId: me.uid, receiverId: book['ownerId']);
+    await _svc.ensureThread(me.uid, book['ownerId']);
   }
 }

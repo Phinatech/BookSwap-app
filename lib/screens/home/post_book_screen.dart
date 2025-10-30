@@ -3,10 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../providers/book_provider.dart';
-import '../../models/book.dart';
 
 class PostBookScreen extends StatefulWidget {
-  final Book? editing;
+  final Map<String, dynamic>? editing;
   const PostBookScreen({super.key, this.editing});
 
   @override
@@ -26,22 +25,23 @@ class _PostBookScreenState extends State<PostBookScreen> {
     super.initState();
     final b = widget.editing;
     if (b != null) {
-      _title.text = b.title;
-      _author.text = b.author;
-      _swapFor.text = b.swapFor;
-      _condition = b.condition;
+      _title.text = b['title'] ?? '';
+      _author.text = b['author'] ?? '';
+      _swapFor.text = b['swapFor'] ?? '';
+      _condition = b['condition'] ?? 'New';
     }
   }
 
   Future<void> _pick() async {
-    final p = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (p != null) setState(() => _image = File(p.path));
+    final x = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
+    if (x != null) setState(() => _image = File(x.path));
   }
 
   @override
   Widget build(BuildContext context) {
     final prov = context.read<BookProvider>();
     final editing = widget.editing;
+
     return Scaffold(
       appBar: AppBar(title: Text(editing == null ? 'Post a Book' : 'Edit Book')),
       body: Form(
@@ -55,8 +55,8 @@ class _PostBookScreenState extends State<PostBookScreen> {
             const SizedBox(height: 12),
             TextFormField(controller: _swapFor, decoration: const InputDecoration(labelText: 'Swap For')),
             const SizedBox(height: 12),
-            DropdownButtonFormField(
-              value: _condition,
+            DropdownButtonFormField<String>(
+              initialValue: _condition,
               decoration: const InputDecoration(labelText: 'Condition'),
               items: const [
                 DropdownMenuItem(value: 'New', child: Text('New')),
@@ -76,11 +76,9 @@ class _PostBookScreenState extends State<PostBookScreen> {
                   borderRadius: BorderRadius.circular(12),
                   image: _image != null
                       ? DecorationImage(image: FileImage(_image!), fit: BoxFit.cover)
-                      : (editing?.imageUrl.isNotEmpty == true)
-                          ? DecorationImage(image: NetworkImage(editing!.imageUrl), fit: BoxFit.cover)
-                          : null,
+                      : null,
                 ),
-                child: _image == null && (editing?.imageUrl.isEmpty ?? true)
+                child: _image == null
                     ? const Center(child: Text('Tap to add cover image'))
                     : null,
               ),
@@ -89,23 +87,31 @@ class _PostBookScreenState extends State<PostBookScreen> {
             ElevatedButton(
               onPressed: () async {
                 if (!_form.currentState!.validate()) return;
+
                 if (editing == null) {
+                  // CHANGED: REQUIRE an image for create (prevents empty URL cases)
+                  if (_image == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please add a cover image before posting.')), // CHANGED
+                    );
+                    return; // CHANGED
+                  }
                   await prov.create(
                     title: _title.text.trim(),
                     author: _author.text.trim(),
                     condition: _condition,
                     swapFor: _swapFor.text.trim(),
-                    cover: _image,
+                    imageFile: _image!, // CHANGED
                   );
                 } else {
                   await prov.update(
-                    id: editing.id,
+                    id: editing['id'],
                     title: _title.text.trim(),
                     author: _author.text.trim(),
                     condition: _condition,
                     swapFor: _swapFor.text.trim(),
-                    cover: _image,
-                    currentImageUrl: editing.imageUrl,
+                    imageFile: _image, // optional new image
+                    currentImageUrl: editing['imageUrl'] as String?, // may be ''
                   );
                 }
                 if (mounted) Navigator.pop(context);

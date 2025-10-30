@@ -13,19 +13,79 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool notif = true;
   bool email = true;
 
+  Widget _buildAvatar({String? email, String? photoURL}) {
+    final initials = (email != null && email.isNotEmpty)
+        ? email.trim().substring(0, 1).toUpperCase()
+        : '?';
+    return CircleAvatar(
+      radius: 28,
+      backgroundColor: const Color(0xFFFFC107).withOpacity(.2),
+      foregroundColor: const Color(0xFF0A0A23),
+      backgroundImage: (photoURL != null && photoURL.isNotEmpty) ? NetworkImage(photoURL) : null,
+      child: (photoURL == null || photoURL.isEmpty)
+          ? Text(initials, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800))
+          : null,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.read<AuthService>();
     final user = auth.currentUser!;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          ListTile(
-            title: const Text('Profile'),
-            subtitle: Text('${user.email}\nUID: ${user.uid}'),
+          // Profile card
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _buildAvatar(email: user.email, photoURL: user.photoURL),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          user.email ?? 'No email',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 6),
+                        SelectableText(
+                          'UID: ${user.uid}',
+                          style: TextStyle(color: const Color.fromARGB(255, 61, 61, 61), fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: (user.emailVerified) ? Colors.green.withOpacity(.12) : Colors.red.withOpacity(.12),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      user.emailVerified ? 'Verified' : 'Unverified',
+                      style: TextStyle(
+                        color: user.emailVerified ? Colors.green.shade700 : Colors.red.shade700,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
+
           const SizedBox(height: 8),
           SwitchListTile(
             value: notif,
@@ -37,13 +97,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onChanged: (v) => setState(() => email = v),
             title: const Text('Email Updates'),
           ),
+
           const SizedBox(height: 12),
-          ListTile(
-            title: const Text('About'),
-            subtitle: const Text('BookSwap • Flutter + Firebase'),
+          const ListTile(
+            title: Text('About'),
+            subtitle: Text(
+              'BookSwap helps students exchange textbooks easily. '
+              'Browse listings, post your books with cover images, and initiate swaps. '
+              'Real-time updates, optional chat, and email verification keep things safe.\n\n'
+              //'Version 1.0 • Built with Flutter + Firebase',
+            ),
           ),
+
           const SizedBox(height: 24),
-          ElevatedButton(onPressed: () => auth.signOut(), child: const Text('Log out')),
+          ElevatedButton(
+            onPressed: () => auth.signOut(),
+            child: const Text('Log out'),
+          ),
         ],
       ),
     );

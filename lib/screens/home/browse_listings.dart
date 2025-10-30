@@ -19,9 +19,14 @@ class BrowseListings extends StatelessWidget {
               itemCount: prov.browse.length,
               itemBuilder: (c, i) {
                 final b = prov.browse[i];
+
                 return BookCard(
-                  book: b,
-                  subtitle2: 'By ${b.author} · ${b.condition}\n${DateFormat.yMMMd().format(DateTime.now())}',
+                  title: b['title'] ?? '',
+                  author: b['author'] ?? '',
+                  condition: b['condition'] ?? 'New',
+                  imageUrl: b['imageUrl'] ?? '',
+                  secondary: DateFormat.yMMMd().format(DateTime.now()),
+                  status: b['status'] ?? '',
                   onSwap: () => prov.requestSwap(b),
                 );
               },

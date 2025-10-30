@@ -15,13 +15,26 @@ class FirestoreService {
       _db.collection('books').orderBy('createdAt', descending: true).snapshots();
 
   Stream<QuerySnapshot<Map<String, dynamic>>> booksByOwner(String ownerId) =>
-      _db.collection('books').where('ownerId', isEqualTo: ownerId).orderBy('createdAt', descending: true).snapshots();
+      _db.collection('books')
+          .where('ownerId', isEqualTo: ownerId)
+          .orderBy('createdAt', descending: true)
+          .snapshots();
 
+  // Upload image and ALWAYS return an HTTPS download URL (not a path or gs://)
   Future<String> uploadCover(File file, String ownerId) async {
     final id = const Uuid().v4();
-    final ref = _storage.ref('covers/$ownerId/$id.jpg');
-    await ref.putFile(file);
-    return ref.getDownloadURL();
+    final ref = _storage.ref().child('covers/$ownerId/$id.jpg');
+    // CHANGED: add metadata, await put, then get https URL
+    await ref.putFile(file, SettableMetadata(contentType: 'image/jpeg')); // CHANGED
+    final url = await ref.getDownloadURL(); // CHANGED
+    if (url.isEmpty) {
+      throw FirebaseException(
+        plugin: 'firebase_storage',
+        code: 'object-not-found',
+        message: 'Failed to obtain download URL for uploaded image.',
+      );
+    }
+    return url;
   }
 
   Future<String> createBook(Map<String, dynamic> data) async {
@@ -44,7 +57,11 @@ class FirestoreService {
   Stream<QuerySnapshot<Map<String, dynamic>>> incomingOffers(String uid) =>
       _db.collection('swaps').where('receiverId', isEqualTo: uid).orderBy('createdAt', descending: true).snapshots();
 
-  Future<String> createSwap({required String bookId, required String senderId, required String receiverId}) async {
+  Future<String> createSwap({
+    required String bookId,
+    required String senderId,
+    required String receiverId,
+  }) async {
     final ref = _db.collection('swaps').doc();
     await ref.set({
       'bookId': bookId,
@@ -57,8 +74,7 @@ class FirestoreService {
     return ref.id;
   }
 
-  // ---------- Chats ----------
-  // chat id is deterministic between two users (sorted UIDs)
+  // ---------- Chats (optional) ----------
   String chatIdFor(String a, String b) {
     final pair = [a, b]..sort();
     return pair.join('_');

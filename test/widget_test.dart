@@ -10,6 +10,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 // Provide a minimal MyApp widget for the test (replaces import to avoid missing symbol).
 class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+
   @override
   _MyAppState createState() => _MyAppState();
 }
