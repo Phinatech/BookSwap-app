@@ -17,10 +17,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -33,10 +30,7 @@ class DefaultFirebaseOptions {
           'you can reconfigure this by running the FlutterFire CLI again.',
         );
       case TargetPlatform.windows:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for windows - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -64,6 +58,26 @@ class DefaultFirebaseOptions {
     projectId: 'individualproject-f1b4d',
     storageBucket: 'individualproject-f1b4d.firebasestorage.app',
     iosBundleId: 'com.example.individualFinal',
+  );
+
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyCynU4pURoGFuVF7jiRukaKOdLvGx2Y8XQ',
+    appId: '1:66003740288:web:ecf7d12ae2ee34903fe865',
+    messagingSenderId: '66003740288',
+    projectId: 'individualproject-f1b4d',
+    authDomain: 'individualproject-f1b4d.firebaseapp.com',
+    storageBucket: 'individualproject-f1b4d.firebasestorage.app',
+    measurementId: 'G-NN2D386P2H',
+  );
+
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'AIzaSyCynU4pURoGFuVF7jiRukaKOdLvGx2Y8XQ',
+    appId: '1:66003740288:web:3b6ebe9960695f873fe865',
+    messagingSenderId: '66003740288',
+    projectId: 'individualproject-f1b4d',
+    authDomain: 'individualproject-f1b4d.firebaseapp.com',
+    storageBucket: 'individualproject-f1b4d.firebasestorage.app',
+    measurementId: 'G-70FW0FF3QX',
   );
 
 }

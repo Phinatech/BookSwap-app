@@ -12,7 +12,7 @@ import 'screens/home/browse_listings.dart';
 import 'screens/home/my_listings.dart';
 import 'screens/chat/threads_screen.dart';
 import 'screens/settings/settings_screen.dart';
-import 'screens/auth/welcome_screen.dart'; // ✅ NEW import
+import 'screens/auth/welcome_screen.dart'; // 
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

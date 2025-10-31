@@ -1,6 +1,8 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
 class FirestoreService {
@@ -20,21 +22,33 @@ class FirestoreService {
           .orderBy('createdAt', descending: true)
           .snapshots();
 
-  // Upload image and ALWAYS return an HTTPS download URL (not a path or gs://)
-  Future<String> uploadCover(File file, String ownerId) async {
+  Future<String> uploadCover(XFile file, String ownerId) async {
+    print('uploadCover called for owner: $ownerId');
     final id = const Uuid().v4();
     final ref = _storage.ref().child('covers/$ownerId/$id.jpg');
-    // CHANGED: add metadata, await put, then get https URL
-    await ref.putFile(file, SettableMetadata(contentType: 'image/jpeg')); // CHANGED
-    final url = await ref.getDownloadURL(); // CHANGED
-    if (url.isEmpty) {
-      throw FirebaseException(
-        plugin: 'firebase_storage',
-        code: 'object-not-found',
-        message: 'Failed to obtain download URL for uploaded image.',
-      );
+    print('Storage ref: ${ref.fullPath}');
+    
+    try {
+      if (kIsWeb) {
+        print('Reading file bytes for web...');
+        final bytes = await file.readAsBytes();
+        print('File size: ${bytes.length} bytes');
+        print('Starting upload to Firebase Storage...');
+        await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg')).timeout(Duration(seconds: 30));
+        print('Upload completed');
+      } else {
+        print('Uploading file for mobile...');
+        await ref.putFile(File(file.path), SettableMetadata(contentType: 'image/jpeg')).timeout(Duration(seconds: 30));
+      }
+      
+      print('Getting download URL...');
+      final url = await ref.getDownloadURL().timeout(Duration(seconds: 10));
+      print('Download URL: $url');
+      return url;
+    } catch (e) {
+      print('Upload error: $e');
+      throw Exception('Upload failed: $e');
     }
-    return url;
   }
 
   Future<String> createBook(Map<String, dynamic> data) async {

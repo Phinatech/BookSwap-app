@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -18,7 +19,8 @@ class _PostBookScreenState extends State<PostBookScreen> {
   final _author = TextEditingController();
   final _swapFor = TextEditingController();
   String _condition = 'New';
-  File? _image;
+  XFile? _image;
+  bool _loading = false;
 
   @override
   void initState() {
@@ -33,8 +35,13 @@ class _PostBookScreenState extends State<PostBookScreen> {
   }
 
   Future<void> _pick() async {
-    final x = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (x != null) setState(() => _image = File(x.path));
+    final x = await ImagePicker().pickImage(
+      source: ImageSource.gallery, 
+      imageQuality: kIsWeb ? 50 : 85,
+      maxWidth: 800,
+      maxHeight: 600,
+    );
+    if (x != null) setState(() => _image = x);
   }
 
   @override
@@ -74,50 +81,66 @@ class _PostBookScreenState extends State<PostBookScreen> {
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.grey.shade400),
                   borderRadius: BorderRadius.circular(12),
-                  image: _image != null
-                      ? DecorationImage(image: FileImage(_image!), fit: BoxFit.cover)
-                      : null,
                 ),
-                child: _image == null
-                    ? const Center(child: Text('Tap to add cover image'))
-                    : null,
+                child: _image != null
+                    ? kIsWeb
+                        ? Image.network(_image!.path, fit: BoxFit.cover)
+                        : Image.file(File(_image!.path), fit: BoxFit.cover)
+                    : const Center(child: Text('Tap to add cover image')),
               ),
             ),
             const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () async {
-                if (!_form.currentState!.validate()) return;
+_loading
+                ? const Center(child: CircularProgressIndicator())
+                : ElevatedButton(
+                    onPressed: () async {
+                      if (!_form.currentState!.validate()) return;
 
-                if (editing == null) {
-                  // CHANGED: REQUIRE an image for create (prevents empty URL cases)
-                  if (_image == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please add a cover image before posting.')), // CHANGED
-                    );
-                    return; // CHANGED
-                  }
-                  await prov.create(
-                    title: _title.text.trim(),
-                    author: _author.text.trim(),
-                    condition: _condition,
-                    swapFor: _swapFor.text.trim(),
-                    imageFile: _image!, // CHANGED
-                  );
-                } else {
-                  await prov.update(
-                    id: editing['id'],
-                    title: _title.text.trim(),
-                    author: _author.text.trim(),
-                    condition: _condition,
-                    swapFor: _swapFor.text.trim(),
-                    imageFile: _image, // optional new image
-                    currentImageUrl: editing['imageUrl'] as String?, // may be ''
-                  );
-                }
-                if (mounted) Navigator.pop(context);
-              },
-              child: Text(editing == null ? 'Post' : 'Save'),
-            ),
+                      setState(() => _loading = true);
+                      
+                      try {
+                        print('Starting post process...');
+                        if (editing == null) {
+                          // Temporarily allow posts without images due to Firebase Storage timeout
+                          // if (_image == null) {
+                          //   ScaffoldMessenger.of(context).showSnackBar(
+                          //     const SnackBar(content: Text('Please add a cover image before posting.')),
+                          //   );
+                          //   return;
+                          // }
+                          print('Creating book...');
+                          await prov.create(
+                            title: _title.text.trim(),
+                            author: _author.text.trim(),
+                            condition: _condition,
+                            swapFor: _swapFor.text.trim(),
+                            imageFile: _image,
+                          );
+                          print('Book created successfully');
+                        } else {
+                          await prov.update(
+                            id: editing['id'],
+                            title: _title.text.trim(),
+                            author: _author.text.trim(),
+                            condition: _condition,
+                            swapFor: _swapFor.text.trim(),
+                            imageFile: _image,
+                            currentImageUrl: editing['imageUrl'] as String?,
+                          );
+                        }
+                        if (mounted) Navigator.pop(context);
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error: $e')),
+                          );
+                        }
+                      } finally {
+                        if (mounted) setState(() => _loading = false);
+                      }
+                    },
+                    child: Text(editing == null ? 'Post' : 'Save'),
+                  ),
           ],
         ),
       ),

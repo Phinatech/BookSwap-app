@@ -58,7 +58,8 @@ class BookCard extends StatelessWidget {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('By $author · $condition'),
+            Text('By $author'),
+            Text('Condition: $condition'),
             if (secondary != null) Text(secondary!, style: const TextStyle(fontSize: 12)),
             if (status != null && status!.isNotEmpty)
               Padding(

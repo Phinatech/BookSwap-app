@@ -104,14 +104,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: Text(
               'BookSwap helps students exchange textbooks easily. '
               'Browse listings, post your books with cover images, and initiate swaps. '
-              'Real-time updates, optional chat, and email verification keep things safe.\n\n'
-              //'Version 1.0 • Built with Flutter + Firebase',
+              'Real-time updates, optional chat, and email verification keep things safe.\n'
             ),
           ),
 
           const SizedBox(height: 24),
           ElevatedButton(
-            onPressed: () => auth.signOut(),
+            onPressed: () async {
+              await auth.signOut();
+              if (mounted) {
+                Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+              }
+            },
             child: const Text('Log out'),
           ),
         ],

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
 import '../services/firestore_service.dart';
 
 class BookProvider with ChangeNotifier {
@@ -51,22 +52,33 @@ class BookProvider with ChangeNotifier {
     required String author,
     required String condition,
     required String swapFor,
-    required File imageFile, // CHANGED: require image for safety
+    XFile? imageFile,
   }) async {
+    print('BookProvider.create called');
     final user = _auth.currentUser!;
-    // CHANGED: always compute an https URL before saving
-    final imageUrl = await _svc.uploadCover(imageFile, user.uid); // CHANGED
+    print('User: ${user.uid}');
+    
+    String imageUrl = '';
+    if (imageFile != null) {
+      print('Starting image upload...');
+      imageUrl = await _svc.uploadCover(imageFile, user.uid);
+      print('Image uploaded: $imageUrl');
+    } else {
+      print('No image provided, using empty string');
+    }
 
+    print('Creating book document...');
     await _svc.createBook({
       'title': title,
       'author': author,
       'condition': condition,
       'swapFor': swapFor,
-      'imageUrl': imageUrl, // CHANGED: https url only
+      'imageUrl': imageUrl,
       'ownerId': user.uid,
       'ownerEmail': user.email ?? '',
       'status': '',
     });
+    print('Book document created');
   }
 
   // ------------ UPDATE ------------
@@ -76,7 +88,7 @@ class BookProvider with ChangeNotifier {
     required String author,
     required String condition,
     required String swapFor,
-    File? imageFile,
+    XFile? imageFile,
     String? currentImageUrl,
   }) async {
     // CHANGED: if new image provided, upload; else keep existing (or empty string)
