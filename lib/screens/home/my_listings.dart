@@ -103,7 +103,15 @@ class _MyListingsState extends State<MyListings> with SingleTickerProviderStateM
     return StreamBuilder(
       stream: FirestoreService.instance.myOffers(uid),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData) {
+          return const Center(child: Text('No offers sent'));
+        }
         final offers = snapshot.data!.docs;
         if (offers.isEmpty) return const Center(child: Text('No offers sent'));
         return ListView.builder(
@@ -126,7 +134,15 @@ class _MyListingsState extends State<MyListings> with SingleTickerProviderStateM
     return StreamBuilder(
       stream: FirestoreService.instance.incomingOffers(uid),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData) {
+          return const Center(child: Text('No incoming offers'));
+        }
         final offers = snapshot.data!.docs;
         if (offers.isEmpty) return const Center(child: Text('No incoming offers'));
         return ListView.builder(

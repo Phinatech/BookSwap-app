@@ -66,10 +66,10 @@ class FirestoreService {
 
   // ---------- Swaps ----------
   Stream<QuerySnapshot<Map<String, dynamic>>> myOffers(String uid) =>
-      _db.collection('swaps').where('senderId', isEqualTo: uid).orderBy('createdAt', descending: true).snapshots();
+      _db.collection('swaps').where('senderId', isEqualTo: uid).snapshots();
 
   Stream<QuerySnapshot<Map<String, dynamic>>> incomingOffers(String uid) =>
-      _db.collection('swaps').where('receiverId', isEqualTo: uid).orderBy('createdAt', descending: true).snapshots();
+      _db.collection('swaps').where('receiverId', isEqualTo: uid).snapshots();
 
   Future<String> createSwap({
     required String bookId,

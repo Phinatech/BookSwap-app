@@ -24,6 +24,21 @@ class BookCard extends StatelessWidget {
     this.onSwap,
   });
 
+  Color _getConditionColor(String condition) {
+    switch (condition.toLowerCase()) {
+      case 'new':
+        return Colors.green.shade800; // Dark green
+      case 'like new':
+        return Colors.green.shade400; // Light green
+      case 'good':
+        return Colors.orange;
+      case 'used':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // CHANGED: Only render network when it's a non-empty http(s) URL
@@ -54,12 +69,43 @@ class BookCard extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: ListTile(
         leading: ClipRRect(borderRadius: BorderRadius.circular(8), child: thumb),
-        title: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis),
+        title: Text(
+          title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
+        ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('By $author'),
-            Text('Condition: $condition'),
+            RichText(
+              text: TextSpan(
+                children: [
+                  const TextSpan(
+                    text: 'Author: ',
+                    style: TextStyle(color: Colors.black, fontSize: 12),
+                  ),
+                  TextSpan(
+                    text: author,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              'Condition: $condition',
+              style: TextStyle(
+                color: _getConditionColor(condition),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             if (secondary != null) Text(secondary!, style: const TextStyle(fontSize: 12)),
             if (status != null && status!.isNotEmpty)
               Padding(

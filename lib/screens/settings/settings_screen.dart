@@ -13,6 +13,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool notif = true;
   bool email = true;
 
+  String _formatDate(DateTime? date) {
+    if (date == null) return 'Unknown';
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
   Widget _buildAvatar({String? email, String? photoURL}) {
     final initials = (email != null && email.isNotEmpty)
         ? email.trim().substring(0, 1).toUpperCase()
@@ -58,9 +65,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 6),
-                        SelectableText(
-                          'UID: ${user.uid}',
-                          style: TextStyle(color: const Color.fromARGB(255, 61, 61, 61), fontSize: 12),
+                        Text(
+                          'Account created: ${_formatDate(user.metadata.creationTime)}',
+                          style: const TextStyle(
+                            color: Color.fromARGB(255, 5, 5, 184),
+                            fontSize: 12,
+                            fontStyle: FontStyle.italic,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ],
                     ),
