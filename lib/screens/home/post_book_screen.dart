@@ -99,16 +99,7 @@ _loading
                       setState(() => _loading = true);
                       
                       try {
-                        print('Starting post process...');
                         if (editing == null) {
-                          // Temporarily allow posts without images due to Firebase Storage timeout
-                          // if (_image == null) {
-                          //   ScaffoldMessenger.of(context).showSnackBar(
-                          //     const SnackBar(content: Text('Please add a cover image before posting.')),
-                          //   );
-                          //   return;
-                          // }
-                          print('Creating book...');
                           await prov.create(
                             title: _title.text.trim(),
                             author: _author.text.trim(),
@@ -116,7 +107,6 @@ _loading
                             swapFor: _swapFor.text.trim(),
                             imageFile: _image,
                           );
-                          print('Book created successfully');
                         } else {
                           await prov.update(
                             id: editing['id'],
@@ -128,7 +118,12 @@ _loading
                             currentImageUrl: editing['imageUrl'] as String?,
                           );
                         }
-                        if (mounted) Navigator.pop(context);
+                        if (mounted) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(editing == null ? 'Book posted successfully!' : 'Book updated successfully!')),
+                          );
+                        }
                       } catch (e) {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(

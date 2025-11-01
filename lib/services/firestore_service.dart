@@ -23,31 +23,22 @@ class FirestoreService {
           .snapshots();
 
   Future<String> uploadCover(XFile file, String ownerId) async {
-    print('uploadCover called for owner: $ownerId');
-    final id = const Uuid().v4();
-    final ref = _storage.ref().child('covers/$ownerId/$id.jpg');
-    print('Storage ref: ${ref.fullPath}');
-    
     try {
+      final id = const Uuid().v4();
+      final ref = _storage.ref().child('covers/$ownerId/$id.jpg');
+      
       if (kIsWeb) {
-        print('Reading file bytes for web...');
         final bytes = await file.readAsBytes();
-        print('File size: ${bytes.length} bytes');
-        print('Starting upload to Firebase Storage...');
-        await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg')).timeout(Duration(seconds: 30));
-        print('Upload completed');
+        await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
       } else {
-        print('Uploading file for mobile...');
-        await ref.putFile(File(file.path), SettableMetadata(contentType: 'image/jpeg')).timeout(Duration(seconds: 30));
+        await ref.putFile(File(file.path), SettableMetadata(contentType: 'image/jpeg'));
       }
       
-      print('Getting download URL...');
-      final url = await ref.getDownloadURL().timeout(Duration(seconds: 10));
-      print('Download URL: $url');
-      return url;
+      return await ref.getDownloadURL();
     } catch (e) {
-      print('Upload error: $e');
-      throw Exception('Upload failed: $e');
+      // Return empty string on error instead of throwing
+      print('Upload failed, continuing without image: $e');
+      return '';
     }
   }
 
@@ -66,10 +57,10 @@ class FirestoreService {
 
   // ---------- Swaps ----------
   Stream<QuerySnapshot<Map<String, dynamic>>> myOffers(String uid) =>
-      _db.collection('swaps').where('senderId', isEqualTo: uid).snapshots();
+      _db.collection('swaps').where('senderId', isEqualTo: uid).orderBy('createdAt', descending: true).snapshots();
 
   Stream<QuerySnapshot<Map<String, dynamic>>> incomingOffers(String uid) =>
-      _db.collection('swaps').where('receiverId', isEqualTo: uid).snapshots();
+      _db.collection('swaps').where('receiverId', isEqualTo: uid).orderBy('createdAt', descending: true).snapshots();
 
   Future<String> createSwap({
     required String bookId,
@@ -84,8 +75,20 @@ class FirestoreService {
       'status': 'Pending',
       'createdAt': FieldValue.serverTimestamp(),
     });
-    await _db.collection('books').doc(bookId).update({'status': 'Pending'});
     return ref.id;
+  }
+
+  Future<void> updateOfferStatus(String offerId, String status) async {
+    await _db.collection('swaps').doc(offerId).update({'status': status});
+  }
+
+  Future<bool> checkExistingSwap(String bookId, String senderId) async {
+    final query = await _db.collection('swaps')
+        .where('bookId', isEqualTo: bookId)
+        .where('senderId', isEqualTo: senderId)
+        .where('status', isEqualTo: 'Pending')
+        .get();
+    return query.docs.isNotEmpty;
   }
 
   // ---------- Chats (optional) ----------

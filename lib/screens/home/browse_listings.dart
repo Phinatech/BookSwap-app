@@ -19,6 +19,12 @@ class BrowseListings extends StatelessWidget {
               itemCount: prov.browse.length,
               itemBuilder: (c, i) {
                 final b = prov.browse[i];
+                final status = b['status'] ?? '';
+                
+                // Skip books with pending status
+                if (status.toLowerCase() == 'pending') {
+                  return const SizedBox.shrink();
+                }
 
                 return BookCard(
                   title: b['title'] ?? '',

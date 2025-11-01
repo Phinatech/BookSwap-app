@@ -68,7 +68,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Text(
                           'Account created: ${_formatDate(user.metadata.creationTime)}',
                           style: const TextStyle(
-                            color: Color.fromARGB(255, 5, 5, 184),
+                            color: Color.fromARGB(255, 62, 184, 5),
                             fontSize: 12,
                             fontStyle: FontStyle.italic,
                             fontWeight: FontWeight.bold,

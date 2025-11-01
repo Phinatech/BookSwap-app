@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
@@ -54,20 +53,20 @@ class BookProvider with ChangeNotifier {
     required String swapFor,
     XFile? imageFile,
   }) async {
-    print('BookProvider.create called');
     final user = _auth.currentUser!;
-    print('User: ${user.uid}');
     
     String imageUrl = '';
     if (imageFile != null) {
-      print('Starting image upload...');
-      imageUrl = await _svc.uploadCover(imageFile, user.uid);
-      print('Image uploaded: $imageUrl');
-    } else {
-      print('No image provided, using empty string');
+      try {
+        imageUrl = await _svc.uploadCover(imageFile, user.uid).timeout(
+          const Duration(seconds: 15),
+          onTimeout: () => '',
+        );
+      } catch (e) {
+        imageUrl = '';
+      }
     }
 
-    print('Creating book document...');
     await _svc.createBook({
       'title': title,
       'author': author,
@@ -78,7 +77,6 @@ class BookProvider with ChangeNotifier {
       'ownerEmail': user.email ?? '',
       'status': '',
     });
-    print('Book document created');
   }
 
   // ------------ UPDATE ------------
@@ -91,17 +89,23 @@ class BookProvider with ChangeNotifier {
     XFile? imageFile,
     String? currentImageUrl,
   }) async {
-    // CHANGED: if new image provided, upload; else keep existing (or empty string)
-    String imageUrl = currentImageUrl ?? ''; // CHANGED
+    String imageUrl = currentImageUrl ?? '';
     if (imageFile != null) {
-      imageUrl = await _svc.uploadCover(imageFile, _auth.currentUser!.uid); // CHANGED
+      try {
+        imageUrl = await _svc.uploadCover(imageFile, _auth.currentUser!.uid).timeout(
+          const Duration(seconds: 15),
+          onTimeout: () => currentImageUrl ?? '',
+        );
+      } catch (e) {
+        imageUrl = currentImageUrl ?? '';
+      }
     }
     await _svc.updateBook(id, {
       'title': title,
       'author': author,
       'condition': condition,
       'swapFor': swapFor,
-      'imageUrl': imageUrl, // CHANGED
+      'imageUrl': imageUrl,
     });
   }
 
@@ -112,6 +116,11 @@ class BookProvider with ChangeNotifier {
   Future<void> requestSwap(Map<String, dynamic> book) async {
     final me = _auth.currentUser!;
     if (me.uid == book['ownerId']) return;
+    
+    // Check if user already has a pending swap for this book
+    final existingSwap = await _svc.checkExistingSwap(book['id'], me.uid);
+    if (existingSwap) return;
+    
     await _svc.createSwap(bookId: book['id'], senderId: me.uid, receiverId: book['ownerId']);
     await _svc.ensureThread(me.uid, book['ownerId']);
   }
