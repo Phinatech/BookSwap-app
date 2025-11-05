@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 
 class BookCard extends StatelessWidget {
@@ -41,29 +42,54 @@ class BookCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // CHANGED: Only render network when it's a non-empty http(s) URL
     final u = imageUrl ?? '';
-    final isHttp = u.startsWith('http://') || u.startsWith('https://'); // CHANGED
+    final isHttp = u.startsWith('http://') || u.startsWith('https://');
+    final isBase64 = u.startsWith('data:image/');
 
-    final thumb = isHttp
-        ? Image.network(
-            u,
+    Widget thumb;
+    if (isBase64) {
+      try {
+        final base64String = u.split(',')[1];
+        final bytes = base64Decode(base64String);
+        thumb = Image.memory(
+          bytes,
+          width: 52,
+          height: 68,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => const SizedBox(
             width: 52,
             height: 68,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) => const SizedBox(
-              width: 52,
-              height: 68,
-              child: Icon(Icons.menu_book, color: Color(0xFFFFC107)),
-            ),
-          )
-        : (imageAsset != null
-            ? Image.asset(imageAsset!, width: 52, height: 68, fit: BoxFit.cover)
-            : const SizedBox(
-                width: 52,
-                height: 68,
-                child: Icon(Icons.menu_book, color: Color(0xFFFFC107)),
-              ));
+            child: Icon(Icons.menu_book, color: Color(0xFFFFC107)),
+          ),
+        );
+      } catch (e) {
+        thumb = const SizedBox(
+          width: 52,
+          height: 68,
+          child: Icon(Icons.menu_book, color: Color(0xFFFFC107)),
+        );
+      }
+    } else if (isHttp) {
+      thumb = Image.network(
+        u,
+        width: 52,
+        height: 68,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => const SizedBox(
+          width: 52,
+          height: 68,
+          child: Icon(Icons.menu_book, color: Color(0xFFFFC107)),
+        ),
+      );
+    } else if (imageAsset != null) {
+      thumb = Image.asset(imageAsset!, width: 52, height: 68, fit: BoxFit.cover);
+    } else {
+      thumb = const SizedBox(
+        width: 52,
+        height: 68,
+        child: Icon(Icons.menu_book, color: Color(0xFFFFC107)),
+      );
+    }
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

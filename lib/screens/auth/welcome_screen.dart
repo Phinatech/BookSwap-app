@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
+import 'signup_screen.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -66,9 +67,17 @@ class WelcomeScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 // Helper
-                const Text(
-                  'Sign up to get started',
-                  style: TextStyle(color: Colors.white70),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SignupScreen()),
+                    );
+                  },
+                  child: const Text(
+                    'Sign up to get started',
+                    style: TextStyle(color: Colors.white70),
+                  ),
                 ),
               ],
             ),

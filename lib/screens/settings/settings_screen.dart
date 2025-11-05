@@ -99,15 +99,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
 
           const SizedBox(height: 8),
-          SwitchListTile(
-            value: notif,
-            onChanged: (v) => setState(() => notif = v),
-            title: const Text('Notification reminders'),
-          ),
-          SwitchListTile(
-            value: email,
-            onChanged: (v) => setState(() => email = v),
-            title: const Text('Email Updates'),
+          Card(
+            child: Column(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Notification Preferences',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+                SwitchListTile(
+                  value: notif,
+                  onChanged: (v) => setState(() => notif = v),
+                  title: const Text('Swap Notifications'),
+                  subtitle: const Text('Get notified about swap offers'),
+                  activeThumbColor: Color(0xFFFFC107),
+                ),
+                SwitchListTile(
+                  value: email,
+                  onChanged: (v) => setState(() => email = v),
+                  title: const Text('Chat Notifications'),
+                  subtitle: const Text('Get notified about new messages'),
+                  activeThumbColor: Color(0xFFFFC107),
+                ),
+              ],
+            ),
           ),
 
           const SizedBox(height: 12),

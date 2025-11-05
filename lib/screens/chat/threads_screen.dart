@@ -110,7 +110,10 @@ class ThreadsScreen extends StatelessWidget {
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => ChatScreen(chatId: chatId, otherUid: other),
+                      builder: (_) => ChatScreen(
+                        chatId: chatId, 
+                        otherUserEmail: '${other.substring(0, 8)}...',
+                      ),
                     ),
                   ),
                 ),

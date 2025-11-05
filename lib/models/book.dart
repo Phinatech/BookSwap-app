@@ -10,6 +10,7 @@ class Book {
   final String ownerId;
   final String ownerEmail;
   final String status;
+  final DateTime? createdAt;
 
   Book({
     required this.id,
@@ -21,6 +22,7 @@ class Book {
     required this.ownerId,
     required this.ownerEmail,
     required this.status,
+    this.createdAt,
   });
 
   factory Book.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -35,6 +37,7 @@ class Book {
       ownerId: d['ownerId'] ?? '',
       ownerEmail: d['ownerEmail'] ?? '',
       status: d['status'] ?? '',
+      createdAt: (d['createdAt'] as Timestamp?)?.toDate(),
     );
   }
 }

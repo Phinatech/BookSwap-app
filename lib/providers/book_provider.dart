@@ -16,25 +16,31 @@ class BookProvider with ChangeNotifier {
 
   StreamSubscription? _allSub;
   StreamSubscription? _mineSub;
+  StreamSubscription? _authSub;
 
   BookProvider() {
     _bind();
+    _authSub = _auth.authStateChanges().listen((_) => _bind());
   }
 
   void _bind() {
     _allSub?.cancel();
+    _mineSub?.cancel();
+    
     _allSub = _svc.books().listen((s) {
       _browse = s.docs.map((d) => {'id': d.id, ...d.data()}).toList();
       notifyListeners();
     });
 
-    _mineSub?.cancel();
     final uid = _auth.currentUser?.uid;
     if (uid != null) {
       _mineSub = _svc.booksByOwner(uid).listen((s) {
         _mine = s.docs.map((d) => {'id': d.id, ...d.data()}).toList();
         notifyListeners();
       });
+    } else {
+      _mine = [];
+      notifyListeners();
     }
   }
 
@@ -42,6 +48,7 @@ class BookProvider with ChangeNotifier {
   void dispose() {
     _allSub?.cancel();
     _mineSub?.cancel();
+    _authSub?.cancel();
     super.dispose();
   }
 
@@ -53,21 +60,33 @@ class BookProvider with ChangeNotifier {
     required String swapFor,
     XFile? imageFile,
   }) async {
-    final user = _auth.currentUser!;
+    final user = _auth.currentUser;
+    print('🔍 Creating book - User: ${user?.uid} (${user?.email})');
+    
+    if (user == null) {
+      print('❌ No authenticated user for book creation');
+      throw Exception('User not authenticated');
+    }
     
     String imageUrl = '';
     if (imageFile != null) {
+      print('📸 Uploading image...');
       try {
         imageUrl = await _svc.uploadCover(imageFile, user.uid).timeout(
           const Duration(seconds: 15),
-          onTimeout: () => '',
+          onTimeout: () {
+            print('⏰ Image upload timeout');
+            return '';
+          },
         );
+        print('✅ Image uploaded: $imageUrl');
       } catch (e) {
+        print('❌ Image upload failed: $e');
         imageUrl = '';
       }
     }
 
-    await _svc.createBook({
+    final bookData = {
       'title': title,
       'author': author,
       'condition': condition,
@@ -76,7 +95,17 @@ class BookProvider with ChangeNotifier {
       'ownerId': user.uid,
       'ownerEmail': user.email ?? '',
       'status': '',
-    });
+    };
+    
+    print('📝 Creating book with data: $bookData');
+    
+    try {
+      final bookId = await _svc.createBook(bookData);
+      print('✅ Book created successfully with ID: $bookId');
+    } catch (e) {
+      print('❌ Failed to create book: $e');
+      rethrow;
+    }
   }
 
   // ------------ UPDATE ------------
@@ -123,5 +152,8 @@ class BookProvider with ChangeNotifier {
     
     await _svc.createSwap(bookId: book['id'], senderId: me.uid, receiverId: book['ownerId']);
     await _svc.ensureThread(me.uid, book['ownerId']);
+    
+    // Update book status to show it has a pending swap
+    await _svc.updateBook(book['id'], {'status': 'Swap Pending'});
   }
 }

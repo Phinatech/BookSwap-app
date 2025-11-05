@@ -17,4 +17,13 @@ class ChatProvider with ChangeNotifier {
   Future<void> send(String chatId, String to, String text) async {
     await _svc.sendMessage(chatId: chatId, from: _auth.currentUser!.uid, to: to, text: text);
   }
+
+  Future<void> sendMessage({
+    required String chatId,
+    required String from,
+    required String to,
+    required String text,
+  }) async {
+    await _svc.sendMessage(chatId: chatId, from: from, to: to, text: text);
+  }
 }

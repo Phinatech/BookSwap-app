@@ -75,26 +75,7 @@ class BookSwapApp extends StatelessWidget {
   }
 }
 
-class _AuthGate extends StatelessWidget {
-  const _AuthGate();
 
-  @override
-  Widget build(BuildContext context) {
-    final auth = context.read<AuthService>();
-    return StreamBuilder(
-      stream: auth.authStateChanges,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
-        }
-        if (!snapshot.hasData) return const LoginScreen();
-        final user = auth.currentUser!;
-        if (!user.emailVerified) return const VerifyEmailScreen();
-        return const MainNav();
-      },
-    );
-  }
-}
 
 class MainNav extends StatefulWidget {
   const MainNav({super.key});

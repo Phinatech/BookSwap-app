@@ -1,16 +1,13 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:uuid/uuid.dart';
 
 class FirestoreService {
   FirestoreService._();
   static final instance = FirestoreService._();
 
   final _db = FirebaseFirestore.instance;
-  final _storage = FirebaseStorage.instance;
+
 
   // ---------- Books ----------
   Stream<QuerySnapshot<Map<String, dynamic>>> books() =>
@@ -24,28 +21,34 @@ class FirestoreService {
 
   Future<String> uploadCover(XFile file, String ownerId) async {
     try {
-      final id = const Uuid().v4();
-      final ref = _storage.ref().child('covers/$ownerId/$id.jpg');
-      
-      if (kIsWeb) {
-        final bytes = await file.readAsBytes();
-        await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
-      } else {
-        await ref.putFile(File(file.path), SettableMetadata(contentType: 'image/jpeg'));
-      }
-      
-      return await ref.getDownloadURL();
+      final bytes = await file.readAsBytes();
+      final base64String = base64Encode(bytes);
+      print('✅ Image converted to base64 (${base64String.length} chars)');
+      return 'data:image/jpeg;base64,$base64String';
     } catch (e) {
-      // Return empty string on error instead of throwing
-      print('Upload failed, continuing without image: $e');
+      print('❌ Image conversion failed: $e');
       return '';
     }
   }
 
   Future<String> createBook(Map<String, dynamic> data) async {
-    data['createdAt'] = FieldValue.serverTimestamp();
-    final ref = await _db.collection('books').add(data);
-    return ref.id;
+    print('💾 FirestoreService: Creating book with data: $data');
+    
+    try {
+      final bookData = Map<String, dynamic>.from(data);
+      bookData['createdAt'] = FieldValue.serverTimestamp();
+      
+      print('💾 Adding to Firestore collection "books"...');
+      
+      final ref = await _db.collection('books').add(bookData);
+      print('✅ Book document created with ID: ${ref.id}');
+      
+      return ref.id;
+    } catch (e, stackTrace) {
+      print('❌ FirestoreService: Failed to create book: $e');
+      print('Stack trace: $stackTrace');
+      rethrow;
+    }
   }
 
   Future<void> updateBook(String id, Map<String, dynamic> data) async {
@@ -79,7 +82,27 @@ class FirestoreService {
   }
 
   Future<void> updateOfferStatus(String offerId, String status) async {
-    await _db.collection('swaps').doc(offerId).update({'status': status});
+    final batch = _db.batch();
+    
+    // Update the swap status
+    final swapRef = _db.collection('swaps').doc(offerId);
+    batch.update(swapRef, {'status': status});
+    
+    // Get the swap data to find the book
+    final swapDoc = await swapRef.get();
+    if (swapDoc.exists) {
+      final bookId = swapDoc.data()!['bookId'] as String;
+      final bookRef = _db.collection('books').doc(bookId);
+      
+      // Update book status based on swap decision
+      if (status == 'accepted') {
+        batch.update(bookRef, {'status': 'Swap Accepted'});
+      } else if (status == 'rejected') {
+        batch.update(bookRef, {'status': 'Swap Rejected'});
+      }
+    }
+    
+    await batch.commit();
   }
 
   Future<bool> checkExistingSwap(String bookId, String senderId) async {

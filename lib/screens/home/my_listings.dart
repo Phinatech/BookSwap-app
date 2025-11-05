@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/book_provider.dart';
 import '../../services/firestore_service.dart';
 import '../../widgets/book_card.dart';
 import 'post_book_screen.dart';
+
 
 class MyListings extends StatefulWidget {
   const MyListings({super.key});
@@ -48,6 +50,13 @@ class _MyListingsState extends State<MyListings> with SingleTickerProviderStateM
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Listings'),
+        actions: [
+
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _debugListBooks,
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -104,7 +113,7 @@ class _MyListingsState extends State<MyListings> with SingleTickerProviderStateM
                     ),
                     IconButton(
                       icon: const Icon(Icons.delete, color: Color.fromARGB(255, 137, 136, 136)),
-                      onPressed: () => prov.delete(b['id'] as String),
+                      onPressed: () => _confirmDelete(context, prov, b),
                     ),
                   ],
                 ),
@@ -336,5 +345,67 @@ class _MyListingsState extends State<MyListings> with SingleTickerProviderStateM
 
   Future<void> _updateOfferStatus(String offerId, String status) async {
     await FirestoreService.instance.updateOfferStatus(offerId, status);
+  }
+
+  Future<void> _debugListBooks() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      print('🔍 Debug: Current user: ${user?.uid} (${user?.email})');
+      
+      final snapshot = await FirebaseFirestore.instance
+          .collection('books')
+          .get();
+      
+      print('📚 Debug: Total books in database: ${snapshot.docs.length}');
+      
+      if (user != null) {
+        final myBooks = snapshot.docs.where((doc) => 
+          doc.data()['ownerId'] == user.uid
+        ).toList();
+        print('📖 Debug: My books count: ${myBooks.length}');
+        
+        for (final doc in myBooks) {
+          print('Book ${doc.id}: ${doc.data()}');
+        }
+      }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Found ${snapshot.docs.length} books total. Check console for details.')),
+        );
+      }
+    } catch (e) {
+      print('❌ Debug error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Debug error: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _confirmDelete(BuildContext context, BookProvider prov, Map<String, dynamic> book) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Book'),
+        content: Text('Are you sure you want to delete "${book['title']}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirmed == true) {
+      prov.delete(book['id'] as String);
+    }
   }
 }

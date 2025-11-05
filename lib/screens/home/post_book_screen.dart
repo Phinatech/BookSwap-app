@@ -83,10 +83,16 @@ class _PostBookScreenState extends State<PostBookScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: _image != null
-                    ? kIsWeb
-                        ? Image.network(_image!.path, fit: BoxFit.cover)
-                        : Image.file(File(_image!.path), fit: BoxFit.cover)
-                    : const Center(child: Text('Tap to add cover image')),
+                    ? FutureBuilder<Widget>(
+                        future: _buildImagePreview(),
+                        builder: (context, snapshot) {
+                          if (snapshot.hasData) {
+                            return snapshot.data!;
+                          }
+                          return const Center(child: CircularProgressIndicator());
+                        },
+                      )
+                    : const Center(child: Text('Tap to add cover image (optional)')),
               ),
             ),
             const SizedBox(height: 24),
@@ -143,4 +149,20 @@ _loading
   }
 
   String? _req(String? v) => (v == null || v.trim().isEmpty) ? 'Required' : null;
+
+  Future<Widget> _buildImagePreview() async {
+    if (_image == null) return const SizedBox();
+    
+    try {
+      if (kIsWeb) {
+        return Image.network(_image!.path, fit: BoxFit.cover);
+      } else {
+        return Image.file(File(_image!.path), fit: BoxFit.cover);
+      }
+    } catch (e) {
+      return const Center(
+        child: Icon(Icons.error, color: Colors.red),
+      );
+    }
+  }
 }
