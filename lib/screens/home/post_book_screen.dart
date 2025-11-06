@@ -92,7 +92,7 @@ class _PostBookScreenState extends State<PostBookScreen> {
                           return const Center(child: CircularProgressIndicator());
                         },
                       )
-                    : const Center(child: Text('Tap to add cover image (optional)')),
+                    : const Center(child: Text('Tap to add cover image')),
               ),
             ),
             const SizedBox(height: 24),

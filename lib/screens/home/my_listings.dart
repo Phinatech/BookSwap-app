@@ -59,6 +59,14 @@ class _MyListingsState extends State<MyListings> with SingleTickerProviderStateM
         ],
         bottom: TabBar(
           controller: _tabController,
+          labelStyle: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Color(0xFFFFC107)
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.grey,
+          ),
           tabs: const [
             Tab(text: 'My Books'),
             Tab(text: 'My Offers'),

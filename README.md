@@ -177,7 +177,7 @@ service cloud.firestore {
 ## Key Features Implementation
 
 ### Authentication Flow
-1. Welcome screen → Login/Signup
+1. Welcome screen with clickable "Sign up to get started" text → Login/Signup
 2. Email verification required
 3. Persistent login state with Provider
 
