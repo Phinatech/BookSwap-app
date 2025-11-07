@@ -155,8 +155,16 @@ class FirestoreService {
     });
     batch.update(_db.collection('threads').doc(chatId), {
       'lastText': text,
+      'lastMessageFrom': from,
+      'lastTimestamp': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
     await batch.commit();
+  }
+
+  Future<void> markAsRead(String chatId, String userId) async {
+    await _db.collection('threads').doc(chatId).update({
+      'readBy': FieldValue.arrayUnion([userId]),
+    });
   }
 }

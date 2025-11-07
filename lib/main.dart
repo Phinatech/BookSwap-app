@@ -3,11 +3,13 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:provider/provider.dart';
 import 'services/auth_service.dart';
+import 'services/notification_service.dart';
+import 'services/message_listener.dart';
 import 'providers/book_provider.dart';
 import 'providers/chat_provider.dart';
+import 'providers/theme_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/signup_screen.dart';
-import 'screens/auth/verify_email_screen.dart';
 import 'screens/home/browse_listings.dart';
 import 'screens/home/my_listings.dart';
 import 'screens/chat/threads_screen.dart';
@@ -19,14 +21,19 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  try {
+    await NotificationService().initialize();
+    MessageListener().startListening();
+  } catch (e) {
+    debugPrint('Notification service failed to initialize: $e');
+  }
+  
   runApp(const BookSwapApp());
 }
 
 class BookSwapApp extends StatelessWidget {
   const BookSwapApp({super.key});
-
-  static const _navy = Color(0xFF0A0A23);
-  static const _amber = Color(0xFFFFC107);
 
   @override
   Widget build(BuildContext context) {
@@ -35,40 +42,22 @@ class BookSwapApp extends StatelessWidget {
         Provider<AuthService>(create: (_) => AuthService()),
         ChangeNotifierProvider(create: (_) => BookProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
       ],
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        title: 'BookSwap',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: _amber, primary: _amber),
-          scaffoldBackgroundColor: const Color.fromARGB(255, 238, 234, 234),
-          appBarTheme: const AppBarTheme(
-            backgroundColor: _navy,
-            foregroundColor: Color.fromARGB(255, 205, 152, 7),
-            elevation: 0,
-          ),
-          bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-          backgroundColor: _navy,
-          selectedItemColor: Color(0xFFFFC107), 
-          unselectedItemColor: Colors.white70,  
-          showUnselectedLabels: true,           
-          showSelectedLabels: true,             
-          type: BottomNavigationBarType.fixed,  
-),
-          elevatedButtonTheme: ElevatedButtonThemeData(
-            style: ElevatedButton.styleFrom(backgroundColor: _amber, foregroundColor: Colors.black),
-          ),
-          inputDecorationTheme: InputDecorationTheme(
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        ),
-
-        // ✅ CHANGED: show WelcomeScreen first
-        home: const WelcomeScreen(),
-
-        routes: {
-          LoginScreen.route: (_) => const LoginScreen(),
-          SignupScreen.route: (_) => const SignupScreen(),
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, child) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            title: 'BookSwap',
+            theme: themeProvider.lightTheme,
+            darkTheme: themeProvider.darkTheme,
+            themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+            home: const WelcomeScreen(),
+            routes: {
+              LoginScreen.route: (_) => const LoginScreen(),
+              SignupScreen.route: (_) => const SignupScreen(),
+            },
+          );
         },
       ),
     );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/firestore_service.dart';
+import '../services/notification_service.dart';
 
 class ChatProvider with ChangeNotifier {
   final _svc = FirestoreService.instance;
@@ -25,5 +26,11 @@ class ChatProvider with ChangeNotifier {
     required String text,
   }) async {
     await _svc.sendMessage(chatId: chatId, from: from, to: to, text: text);
+    
+    // Send notification
+    await NotificationService().showLocalNotification(
+      title: 'Message Sent!',
+      body: 'Your message "$text" has been sent.',
+    );
   }
 }

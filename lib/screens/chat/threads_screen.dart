@@ -31,7 +31,6 @@ class ThreadsScreen extends StatelessWidget {
     final prov = context.watch<ChatProvider>();
     final me = FirebaseAuth.instance.currentUser!;
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(title: const Text('Chats')),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: prov.threads(),
@@ -52,6 +51,16 @@ class ThreadsScreen extends StatelessWidget {
               ),
             );
           }
+          // Sort by timestamp (most recent first)
+          docs.sort((a, b) {
+            final aTime = a.data()['lastTimestamp'] as Timestamp?;
+            final bTime = b.data()['lastTimestamp'] as Timestamp?;
+            if (aTime == null && bTime == null) return 0;
+            if (aTime == null) return 1;
+            if (bTime == null) return -1;
+            return bTime.compareTo(aTime);
+          });
+          
           return ListView.separated(
             itemCount: docs.length,
             separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFE0E0E0)),
@@ -63,17 +72,35 @@ class ThreadsScreen extends StatelessWidget {
               final lastText = d['lastText'] ?? 'No messages yet';
               final timestamp = d['lastTimestamp'] as Timestamp?;
               
+              // Create avatar from first character and short ID
+              final avatarChar = other.isNotEmpty ? other[0].toUpperCase() : '?';
+              final shortId = '${other.substring(0, 4)}...${other.substring(other.length - 4)}';
+              
+              // Check if message is unread
+              final lastMessageFrom = d['lastMessageFrom'] ?? '';
+              final readBy = List<String>.from(d['readBy'] ?? []);
+              final isUnread = lastMessageFrom != me.uid && 
+                              lastMessageFrom.isNotEmpty && 
+                              !readBy.contains(me.uid);
+              
               return Container(
-                color: Colors.white,
+                color: isUnread ? const Color(0xFFFFC107).withOpacity(0.1) : null,
                 child: ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  leading: const CircleAvatar(
+                  leading: CircleAvatar(
                     radius: 28,
-                    backgroundColor: Color(0xFF0A0A23),
-                    child: Icon(Icons.person, color: Colors.white, size: 28),
+                    backgroundColor: const Color(0xFF0A0A23),
+                    child: Text(
+                      avatarChar,
+                      style: const TextStyle(
+                        color: Color(0xFFFFC107),
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                   title: Text(
-                    other.substring(0, 8),
+                    shortId,
                     style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
                   ),
                   subtitle: Padding(
@@ -107,15 +134,21 @@ class ThreadsScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ChatScreen(
-                        chatId: chatId, 
-                        otherUserEmail: '${other.substring(0, 8)}...',
+                  onTap: () {
+                    // Mark as read by updating lastMessageFrom to current user
+                    if (isUnread) {
+                      FirestoreService.instance.markAsRead(chatId, me.uid);
+                    }
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ChatScreen(
+                          chatId: chatId, 
+                          otherUserEmail: '${other.substring(0, 8)}...',
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
               );
             },

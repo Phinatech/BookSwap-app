@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/firestore_service.dart';
+import '../services/notification_service.dart';
 
 class BookProvider with ChangeNotifier {
   final _svc = FirestoreService.instance;
@@ -155,5 +156,11 @@ class BookProvider with ChangeNotifier {
     
     // Update book status to show it has a pending swap
     await _svc.updateBook(book['id'], {'status': 'Swap Pending'});
+    
+    // Send notification
+    await NotificationService().showLocalNotification(
+      title: 'Swap Request Sent!',
+      body: 'Your swap request for "${book['title']}" has been sent.',
+    );
   }
 }

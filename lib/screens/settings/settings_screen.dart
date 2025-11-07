@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
+import '../../providers/theme_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -107,24 +108,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      'Notification Preferences',
+                      'Preferences',
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
+                Consumer<ThemeProvider>(
+                  builder: (context, themeProvider, child) {
+                    return SwitchListTile(
+                      value: themeProvider.isDarkMode,
+                      onChanged: (_) => themeProvider.toggleTheme(),
+                      title: const Text('Dark Mode'),
+                      subtitle: const Text('Switch between light and dark theme'),
+                      activeThumbColor: const Color(0xFFFFC107),
+                    );
+                  },
+                ),
                 SwitchListTile(
                   value: notif,
-                  onChanged: (v) => setState(() => notif = v),
+                  onChanged: (v) {
+                    setState(() => notif = v);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Swap notifications ${v ? 'enabled' : 'disabled'}'),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  },
                   title: const Text('Swap Notifications'),
                   subtitle: const Text('Get notified about swap offers'),
-                  activeThumbColor: Color(0xFFFFC107),
+                  activeThumbColor: const Color(0xFFFFC107),
                 ),
                 SwitchListTile(
                   value: email,
-                  onChanged: (v) => setState(() => email = v),
+                  onChanged: (v) {
+                    setState(() => email = v);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Chat notifications ${v ? 'enabled' : 'disabled'}'),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  },
                   title: const Text('Chat Notifications'),
                   subtitle: const Text('Get notified about new messages'),
-                  activeThumbColor: Color(0xFFFFC107),
+                  activeThumbColor: const Color(0xFFFFC107),
                 ),
               ],
             ),

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import '../../providers/chat_provider.dart';
 import '../../services/firestore_service.dart';
+import '../../services/notification_service.dart';
 
 class ChatScreen extends StatefulWidget {
   final String chatId;
@@ -21,12 +23,34 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
+  String? _lastMessageId;
 
   @override
   void dispose() {
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _checkForNewMessages(List messages) {
+    if (messages.isEmpty) return;
+    
+    final currentUser = FirebaseAuth.instance.currentUser!;
+    final latestMessage = messages.first.data();
+    final messageId = messages.first.id;
+    
+    // Check if this is a new message from someone else
+    if (_lastMessageId != null && 
+        _lastMessageId != messageId && 
+        latestMessage['from'] != currentUser.uid) {
+      
+      NotificationService().showLocalNotification(
+        title: 'New Message',
+        body: latestMessage['text'] ?? 'You have a new message',
+      );
+    }
+    
+    _lastMessageId = messageId;
   }
 
   void _sendMessage() {
@@ -59,6 +83,23 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
+  String _formatTimestamp(DateTime timestamp) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final messageDate = DateTime(timestamp.year, timestamp.month, timestamp.day);
+    final time = DateFormat('HH:mm').format(timestamp);
+    
+    if (messageDate == today) {
+      return time; // Today: just show time
+    } else if (messageDate == today.subtract(const Duration(days: 1))) {
+      return 'Yesterday $time'; // Yesterday
+    } else if (now.difference(messageDate).inDays < 7) {
+      return '${DateFormat('EEEE').format(timestamp)} $time'; // This week: show day name
+    } else {
+      return '${DateFormat('dd/MM/yyyy').format(timestamp)} $time'; // Older: show date
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentUser = FirebaseAuth.instance.currentUser!;
@@ -89,6 +130,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 }
 
                 final messages = snapshot.data!.docs;
+                _checkForNewMessages(messages);
                 WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
 
                 return ListView.builder(
@@ -127,7 +169,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             if (timestamp != null) ...[
                               const SizedBox(height: 4),
                               Text(
-                                '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}',
+                                _formatTimestamp(timestamp),
                                 style: TextStyle(
                                   color: isMe 
                                     ? const Color(0xFF0A0A23).withOpacity(0.7)

@@ -26,12 +26,13 @@ class BrowseListings extends StatelessWidget {
                   return const SizedBox.shrink();
                 }
 
+                final createdAt = b['createdAt']?.toDate() ?? DateTime.now();
                 return BookCard(
                   title: b['title'] ?? '',
                   author: b['author'] ?? '',
                   condition: b['condition'] ?? 'New',
                   imageUrl: b['imageUrl'] ?? '',
-                  secondary: DateFormat.yMMMd().format(DateTime.now()),
+                  secondary: DateFormat.yMMMd().format(createdAt),
                   status: b['status'] ?? '',
                   onSwap: () => prov.requestSwap(b),
                 );
