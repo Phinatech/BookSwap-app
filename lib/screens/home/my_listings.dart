@@ -144,82 +144,99 @@ class _MyListingsState extends State<MyListings> with SingleTickerProviderStateM
         if (!snapshot.hasData) {
           return const Center(child: Text('No offers sent'));
         }
-        final offers = snapshot.data!.docs;
+        final allOffers = snapshot.data!.docs;
+        final pendingOffers = allOffers.where((doc) {
+          final data = doc.data();
+          final hasUserId = data['userId'] == uid;
+          final hasSenderId = data['senderId'] == uid;
+          return (hasUserId || hasSenderId);
+        }).toList();
+        pendingOffers.sort((a, b) {
+          final aTime = a.data()['createdAt'] as Timestamp?;
+          final bTime = b.data()['createdAt'] as Timestamp?;
+          if (aTime == null && bTime == null) return 0;
+          if (aTime == null) return 1;
+          if (bTime == null) return -1;
+          return bTime.compareTo(aTime);
+        });
+        final offers = pendingOffers;
         if (offers.isEmpty) return const Center(child: Text('No offers sent'));
         return ListView.builder(
           padding: const EdgeInsets.all(16),
           itemCount: offers.length,
           itemBuilder: (c, i) {
-            final offer = offers[i].data();
+            final offerDoc = offers[i];
+            final offer = offerDoc.data();
             final status = offer['status'] ?? 'Unknown';
             final date = offer['createdAt']?.toDate();
-            return Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+            final authorBookId = offer['authorBookId'] ?? '';
+            
+            return FutureBuilder<Map<String, dynamic>?>(
+              future: FirestoreService.instance.getBookDetails(authorBookId),
+              builder: (context, bookSnapshot) {
+                final bookName = bookSnapshot.data?['title'] ?? 'Unknown Book';
+                
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFFFC107),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.swap_horiz, color: Color(0xFF0A0A23)),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Swap Offer Sent',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFFFC107),
+                                shape: BoxShape.circle,
                               ),
-                              Text(
-                                'Book ID: ${offer['bookId']}',
-                                style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: _getStatusColor(status).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            status,
-                            style: TextStyle(
-                              color: _getStatusColor(status),
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
+                              child: const Icon(Icons.swap_horiz, color: Color(0xFF0A0A23)),
                             ),
-                          ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    bookName,
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                  ),
+                                  Text(
+                                    'User ID: ${offer['userId'] ?? offer['senderId'] ?? 'Unknown'}',
+                                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                                  ),
+                                  if (date != null)
+                                    Text(
+                                      '${date.day}/${date.month}/${date.year}',
+                                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: _getStatusColor(status).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                status,
+                                style: TextStyle(
+                                  color: _getStatusColor(status),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                    if (date != null) ...[
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Icon(Icons.access_time, size: 16, color: Colors.grey[500]),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${date.day}/${date.month}/${date.year}',
-                            style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             );
           },
         );
@@ -241,109 +258,128 @@ class _MyListingsState extends State<MyListings> with SingleTickerProviderStateM
         if (!snapshot.hasData) {
           return const Center(child: Text('No incoming offers'));
         }
-        final offers = snapshot.data!.docs;
+        final allOffers = snapshot.data!.docs;
+        final pendingOffers = allOffers.where((doc) {
+          final data = doc.data();
+          final status = data['status'];
+          final hasAuthorId = data['authorId'] == uid;
+          final hasReceiverId = data['receiverId'] == uid;
+          return status == 'Pending' && (hasAuthorId || hasReceiverId);
+        }).toList();
+        pendingOffers.sort((a, b) {
+          final aTime = a.data()['createdAt'] as Timestamp?;
+          final bTime = b.data()['createdAt'] as Timestamp?;
+          if (aTime == null && bTime == null) return 0;
+          if (aTime == null) return 1;
+          if (bTime == null) return -1;
+          return bTime.compareTo(aTime);
+        });
+        final offers = pendingOffers;
         if (offers.isEmpty) return const Center(child: Text('No incoming offers'));
         return ListView.builder(
           padding: const EdgeInsets.all(16),
           itemCount: offers.length,
           itemBuilder: (c, i) {
-            final offer = offers[i].data();
+            final offerDoc = offers[i];
+            final offer = offerDoc.data();
             final status = offer['status'] ?? 'Unknown';
-            final senderId = offer['senderId'] ?? 'Unknown';
             final date = offer['createdAt']?.toDate();
-            return Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+            final authorBookId = offer['authorBookId'] ?? '';
+            
+            return FutureBuilder<Map<String, dynamic>?>(
+              future: FirestoreService.instance.getBookDetails(authorBookId),
+              builder: (context, bookSnapshot) {
+                final bookName = bookSnapshot.data?['title'] ?? 'Unknown Book';
+                
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF0A0A23),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.person, color: Color(0xFFFFC107)),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF0A0A23),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.person, color: Color(0xFFFFC107)),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    bookName,
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                  ),
+                                  Text(
+                                    'Author ID: ${offer['authorId'] ?? offer['receiverId'] ?? 'Unknown'}',
+                                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                                  ),
+                                  if (date != null)
+                                    Text(
+                                      '${date.day}/${date.month}/${date.year}',
+                                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: _getStatusColor(status).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                status,
+                                style: TextStyle(
+                                  color: _getStatusColor(status),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                        if (status.toLowerCase() == 'pending') ...[
+                          const SizedBox(height: 12),
+                          Row(
                             children: [
-                              const Text(
-                                'Incoming Offer',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: () => _updateOfferStatus(offerDoc.id, 'accepted'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  child: const Text('Approve'),
+                                ),
                               ),
-                              Text(
-                                'From: ${senderId.substring(0, 8)}...',
-                                style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                              ),
-                              Text(
-                                'Book: ${offer['bookId']}',
-                                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: () => _updateOfferStatus(offerDoc.id, 'rejected'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  child: const Text('Reject'),
+                                ),
                               ),
                             ],
                           ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: _getStatusColor(status).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            status,
-                            style: TextStyle(
-                              color: _getStatusColor(status),
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        if (date != null) ...[
-                          Icon(Icons.access_time, size: 16, color: Colors.grey[500]),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${date.day}/${date.month}/${date.year}',
-                            style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                          ),
-                          const Spacer(),
-                        ],
-                        if (status.toLowerCase() == 'pending') ...[
-                          ElevatedButton(
-                            onPressed: () => _updateOfferStatus(offers[i].id, 'accepted'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              foregroundColor: Colors.white,
-                              minimumSize: const Size(80, 32),
-                            ),
-                            child: const Text('Approve'),
-                          ),
-                          const SizedBox(width: 8),
-                          ElevatedButton(
-                            onPressed: () => _updateOfferStatus(offers[i].id, 'rejected'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              foregroundColor: Colors.white,
-                              minimumSize: const Size(80, 32),
-                            ),
-                            child: const Text('Deny'),
-                          ),
                         ],
                       ],
                     ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             );
           },
         );

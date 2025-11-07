@@ -163,4 +163,35 @@ class BookProvider with ChangeNotifier {
       body: 'Your swap request for "${book['title']}" has been sent.',
     );
   }
+
+  Future<void> requestSwapWithDetails({
+    required Map<String, dynamic> targetBook,
+    required String offeredBookId,
+    required DateTime preferredDate,
+  }) async {
+    final me = _auth.currentUser!;
+    if (me.uid == targetBook['ownerId']) return;
+    
+    // Check if user already has a pending swap for this book
+    final existingSwap = await _svc.checkExistingSwap(targetBook['id'], me.uid);
+    if (existingSwap) return;
+    
+    await _svc.createDetailedSwap(
+      targetBookId: targetBook['id'],
+      offeredBookId: offeredBookId,
+      senderId: me.uid,
+      receiverId: targetBook['ownerId'],
+      preferredDate: preferredDate,
+    );
+    await _svc.ensureThread(me.uid, targetBook['ownerId']);
+    
+    // Update book status to show it has a pending swap
+    await _svc.updateBook(targetBook['id'], {'status': 'Swap Pending'});
+    
+    // Send notification
+    await NotificationService().showLocalNotification(
+      title: 'Swap Request Sent!',
+      body: 'Your swap request for "${targetBook['title']}" has been sent.',
+    );
+  }
 }

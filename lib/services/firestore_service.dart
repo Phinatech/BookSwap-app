@@ -60,10 +60,17 @@ class FirestoreService {
 
   // ---------- Swaps ----------
   Stream<QuerySnapshot<Map<String, dynamic>>> myOffers(String uid) =>
-      _db.collection('swaps').where('senderId', isEqualTo: uid).orderBy('createdAt', descending: true).snapshots();
+      _db.collection('swaps')
+          .snapshots();
 
   Stream<QuerySnapshot<Map<String, dynamic>>> incomingOffers(String uid) =>
-      _db.collection('swaps').where('receiverId', isEqualTo: uid).orderBy('createdAt', descending: true).snapshots();
+      _db.collection('swaps')
+          .snapshots();
+
+  Future<Map<String, dynamic>?> getBookDetails(String bookId) async {
+    final doc = await _db.collection('books').doc(bookId).get();
+    return doc.exists ? doc.data() : null;
+  }
 
   Future<String> createSwap({
     required String bookId,
@@ -72,11 +79,41 @@ class FirestoreService {
   }) async {
     final ref = _db.collection('swaps').doc();
     await ref.set({
-      'bookId': bookId,
-      'senderId': senderId,
-      'receiverId': receiverId,
+      'authorBookId': bookId,
+      'authorId': receiverId,
+      'userBookId': '',
+      'userId': senderId,
+      'preferredDate': null,
+      'returningDate': null,
       'status': 'Pending',
       'createdAt': FieldValue.serverTimestamp(),
+      'approvedAt': null,
+      'rejectedAt': null,
+      'returnedAt': null,
+    });
+    return ref.id;
+  }
+
+  Future<String> createDetailedSwap({
+    required String targetBookId,
+    required String offeredBookId,
+    required String senderId,
+    required String receiverId,
+    required DateTime preferredDate,
+  }) async {
+    final ref = _db.collection('swaps').doc();
+    await ref.set({
+      'authorBookId': targetBookId,
+      'authorId': receiverId,
+      'userBookId': offeredBookId,
+      'userId': senderId,
+      'preferredDate': Timestamp.fromDate(preferredDate),
+      'returningDate': null,
+      'status': 'Pending',
+      'createdAt': FieldValue.serverTimestamp(),
+      'approvedAt': null,
+      'rejectedAt': null,
+      'returnedAt': null,
     });
     return ref.id;
   }
@@ -84,14 +121,25 @@ class FirestoreService {
   Future<void> updateOfferStatus(String offerId, String status) async {
     final batch = _db.batch();
     
-    // Update the swap status
+    // Update the swap status with timestamp
     final swapRef = _db.collection('swaps').doc(offerId);
-    batch.update(swapRef, {'status': status});
+    final updateData = <String, dynamic>{'status': status};
+    
+    if (status == 'accepted') {
+      updateData['approvedAt'] = FieldValue.serverTimestamp();
+    } else if (status == 'rejected') {
+      updateData['rejectedAt'] = FieldValue.serverTimestamp();
+    } else if (status == 'returned') {
+      updateData['returnedAt'] = FieldValue.serverTimestamp();
+    }
+    
+    batch.update(swapRef, updateData);
     
     // Get the swap data to find the book
     final swapDoc = await swapRef.get();
     if (swapDoc.exists) {
-      final bookId = swapDoc.data()!['bookId'] as String;
+      final data = swapDoc.data()!;
+      final bookId = data['authorBookId'] as String;
       final bookRef = _db.collection('books').doc(bookId);
       
       // Update book status based on swap decision
@@ -99,6 +147,8 @@ class FirestoreService {
         batch.update(bookRef, {'status': 'Swap Accepted'});
       } else if (status == 'rejected') {
         batch.update(bookRef, {'status': 'Swap Rejected'});
+      } else if (status == 'returned') {
+        batch.update(bookRef, {'status': 'Available'});
       }
     }
     
@@ -165,6 +215,19 @@ class FirestoreService {
   Future<void> markAsRead(String chatId, String userId) async {
     await _db.collection('threads').doc(chatId).update({
       'readBy': FieldValue.arrayUnion([userId]),
+    });
+  }
+
+  Future<void> setReturningDate(String swapId, DateTime returningDate) async {
+    await _db.collection('swaps').doc(swapId).update({
+      'returningDate': Timestamp.fromDate(returningDate),
+    });
+  }
+
+  Future<void> markSwapAsReturned(String swapId) async {
+    await _db.collection('swaps').doc(swapId).update({
+      'status': 'returned',
+      'returnedAt': FieldValue.serverTimestamp(),
     });
   }
 }

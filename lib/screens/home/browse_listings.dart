@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../providers/book_provider.dart';
+import '../../services/auth_service.dart';
 import '../../widgets/book_card.dart';
+import '../../widgets/swap_bottom_sheet.dart';
 
 class BrowseListings extends StatelessWidget {
   const BrowseListings({super.key});
@@ -34,7 +36,24 @@ class BrowseListings extends StatelessWidget {
                   imageUrl: b['imageUrl'] ?? '',
                   secondary: DateFormat.yMMMd().format(createdAt),
                   status: b['status'] ?? '',
-                  onSwap: () => prov.requestSwap(b),
+                  onSwap: () {
+                    final currentUserId = context.read<AuthService>().currentUser?.uid;
+                    if (b['ownerId'] == currentUserId) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('You cannot swap your own book'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) => SwapBottomSheet(targetBook: b),
+                    );
+                  },
                 );
               },
             ),

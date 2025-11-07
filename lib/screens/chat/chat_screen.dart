@@ -106,133 +106,277 @@ class _ChatScreenState extends State<ChatScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.otherUserEmail),
+        title: Row(
+          children: [
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: const Color(0xFFFFC107),
+              child: Text(
+                widget.otherUserEmail[0].toUpperCase(),
+                style: const TextStyle(
+                  color: Color(0xFF0A0A23),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.otherUserEmail,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                  const Text(
+                    'Online',
+                    style: TextStyle(fontSize: 12, color: Colors.white70),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
         backgroundColor: const Color(0xFF0A0A23),
         foregroundColor: const Color(0xFFFFC107),
+        elevation: 2,
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: StreamBuilder(
-              stream: FirestoreService.instance.messages(widget.chatId),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Theme.of(context).scaffoldBackgroundColor,
+              Theme.of(context).cardColor.withOpacity(0.5),
+            ],
+          ),
+        ),
+        child: Column(
+          children: [
+            Expanded(
+              child: StreamBuilder(
+                stream: FirestoreService.instance.messages(widget.chatId),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      'No messages yet. Start the conversation!',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  );
-                }
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.chat_bubble_outline,
+                            size: 64,
+                            color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.5),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No messages yet',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: Theme.of(context).textTheme.titleLarge?.color,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Start the conversation!',
+                            style: TextStyle(
+                              color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
 
-                final messages = snapshot.data!.docs;
-                _checkForNewMessages(messages);
-                WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+                  final messages = snapshot.data!.docs;
+                  _checkForNewMessages(messages);
+                  WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
 
-                return ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(16),
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) {
-                    final message = messages[index].data();
-                    final isMe = message['from'] == currentUser.uid;
-                    final timestamp = message['createdAt']?.toDate();
+                  return ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) {
+                      final message = messages[index].data();
+                      final isMe = message['from'] == currentUser.uid;
+                      final timestamp = message['createdAt']?.toDate();
 
-                    return Align(
-                      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        constraints: BoxConstraints(
-                          maxWidth: MediaQuery.of(context).size.width * 0.75,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isMe 
-                            ? const Color(0xFFFFC107)
-                            : Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            Text(
-                              message['text'] ?? '',
-                              style: TextStyle(
-                                color: isMe ? const Color(0xFF0A0A23) : Colors.black87,
-                                fontSize: 16,
+                            if (!isMe) ...[
+                              CircleAvatar(
+                                radius: 16,
+                                backgroundColor: const Color(0xFF0A0A23),
+                                child: Text(
+                                  widget.otherUserEmail[0].toUpperCase(),
+                                  style: const TextStyle(
+                                    color: Color(0xFFFFC107),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                            ],
+                            Flexible(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                constraints: BoxConstraints(
+                                  maxWidth: MediaQuery.of(context).size.width * 0.7,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isMe 
+                                    ? const Color(0xFFFFC107)
+                                    : Theme.of(context).cardColor,
+                                  borderRadius: BorderRadius.only(
+                                    topLeft: const Radius.circular(20),
+                                    topRight: const Radius.circular(20),
+                                    bottomLeft: Radius.circular(isMe ? 20 : 4),
+                                    bottomRight: Radius.circular(isMe ? 4 : 20),
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      message['text'] ?? '',
+                                      style: TextStyle(
+                                        color: isMe ? const Color(0xFF0A0A23) : Theme.of(context).textTheme.bodyLarge?.color,
+                                        fontSize: 16,
+                                        height: 1.3,
+                                      ),
+                                    ),
+                                    if (timestamp != null) ...[
+                                      const SizedBox(height: 6),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            _formatTimestamp(timestamp),
+                                            style: TextStyle(
+                                              color: isMe 
+                                                ? const Color(0xFF0A0A23).withOpacity(0.6)
+                                                : Theme.of(context).textTheme.bodySmall?.color,
+                                              fontSize: 11,
+                                            ),
+                                          ),
+                                          if (isMe) ...[
+                                            const SizedBox(width: 4),
+                                            Icon(
+                                              Icons.done_all,
+                                              size: 14,
+                                              color: const Color(0xFF0A0A23).withOpacity(0.6),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ],
+                                  ],
+                                ),
                               ),
                             ),
-                            if (timestamp != null) ...[
-                              const SizedBox(height: 4),
-                              Text(
-                                _formatTimestamp(timestamp),
-                                style: TextStyle(
-                                  color: isMe 
-                                    ? const Color(0xFF0A0A23).withOpacity(0.7)
-                                    : Colors.grey.shade600,
-                                  fontSize: 12,
+                            if (isMe) ...[
+                              const SizedBox(width: 8),
+                              CircleAvatar(
+                                radius: 16,
+                                backgroundColor: const Color(0xFFFFC107),
+                                child: Text(
+                                  currentUser.email?[0].toUpperCase() ?? 'M',
+                                  style: const TextStyle(
+                                    color: Color(0xFF0A0A23),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ],
                           ],
                         ),
-                      ),
-                    );
-                  },
-                );
-              },
+                      );
+                    },
+                  );
+                },
+              ),
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.2),
-                  spreadRadius: 1,
-                  blurRadius: 3,
-                  offset: const Offset(0, -1),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: InputDecoration(
-                      hintText: 'Type a message...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(25),
-                        borderSide: BorderSide.none,
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey.shade100,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 10,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).inputDecorationTheme.fillColor ?? Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(25),
+                          border: Border.all(
+                            color: Theme.of(context).dividerColor,
+                            width: 1,
+                          ),
+                        ),
+                        child: TextField(
+                          controller: _controller,
+                          decoration: InputDecoration(
+                            hintText: 'Type a message...',
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 12,
+                            ),
+                            hintStyle: TextStyle(color: Theme.of(context).hintColor),
+                          ),
+                          onSubmitted: (_) => _sendMessage(),
+                          maxLines: null,
+                        ),
                       ),
                     ),
-                    onSubmitted: (_) => _sendMessage(),
-                  ),
+                    const SizedBox(width: 12),
+                    Container(
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFFC107),
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        onPressed: _sendMessage,
+                        icon: const Icon(
+                          Icons.send_rounded,
+                          color: Color(0xFF0A0A23),
+                          size: 22,
+                        ),
+                        padding: const EdgeInsets.all(12),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                FloatingActionButton(
-                  onPressed: _sendMessage,
-                  backgroundColor: const Color(0xFFFFC107),
-                  foregroundColor: const Color(0xFF0A0A23),
-                  mini: true,
-                  child: const Icon(Icons.send),
-                ),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
