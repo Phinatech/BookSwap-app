@@ -5,15 +5,21 @@ import 'package:image_picker/image_picker.dart';
 import '../services/firestore_service.dart';
 import '../services/notification_service.dart';
 
+/// Manages book CRUD operations, swap functionality, and real-time data sync
+/// Uses Firestore streams for reactive UI updates
 class BookProvider with ChangeNotifier {
   final _svc = FirestoreService.instance;
   final _auth = FirebaseAuth.instance;
 
   List<Map<String, dynamic>> _browse = [];
   List<Map<String, dynamic>> _mine = [];
+  bool _loading = false;
+  String? _error;
 
   List<Map<String, dynamic>> get browse => _browse;
   List<Map<String, dynamic>> get mine => _mine;
+  bool get loading => _loading;
+  String? get error => _error;
 
   StreamSubscription? _allSub;
   StreamSubscription? _mineSub;
@@ -61,13 +67,16 @@ class BookProvider with ChangeNotifier {
     required String swapFor,
     XFile? imageFile,
   }) async {
-    final user = _auth.currentUser;
-    print('🔍 Creating book - User: ${user?.uid} (${user?.email})');
+    _setLoading(true);
+    _clearError();
     
-    if (user == null) {
-      print('❌ No authenticated user for book creation');
-      throw Exception('User not authenticated');
-    }
+    try {
+      final user = _auth.currentUser;
+      print('🔍 Creating book - User: ${user?.uid} (${user?.email})');
+      
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
     
     String imageUrl = '';
     if (imageFile != null) {
@@ -100,13 +109,34 @@ class BookProvider with ChangeNotifier {
     
     print('📝 Creating book with data: $bookData');
     
-    try {
-      final bookId = await _svc.createBook(bookData);
-      print('✅ Book created successfully with ID: $bookId');
+      try {
+        final bookId = await _svc.createBook(bookData);
+        print('✅ Book created successfully with ID: $bookId');
+      } catch (e) {
+        print('❌ Failed to create book: $e');
+        rethrow;
+      }
     } catch (e) {
-      print('❌ Failed to create book: $e');
+      _setError('Failed to create book: $e');
       rethrow;
+    } finally {
+      _setLoading(false);
     }
+  }
+
+  void _setLoading(bool loading) {
+    _loading = loading;
+    notifyListeners();
+  }
+
+  void _setError(String error) {
+    _error = error;
+    notifyListeners();
+  }
+
+  void _clearError() {
+    _error = null;
+    notifyListeners();
   }
 
   // ------------ UPDATE ------------

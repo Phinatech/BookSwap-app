@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -43,6 +44,66 @@ class _MyListingsState extends State<MyListings> with SingleTickerProviderStateM
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  Widget _buildBookThumbnail(String imageUrl) {
+    if (imageUrl.isEmpty) {
+      return Container(
+        width: 50,
+        height: 65,
+        color: Colors.grey.shade200,
+        child: const Icon(Icons.menu_book, color: Color(0xFFFFC107)),
+      );
+    }
+
+    final isBase64 = imageUrl.startsWith('data:image/');
+    final isHttp = imageUrl.startsWith('http://') || imageUrl.startsWith('https://');
+
+    if (isBase64) {
+      try {
+        final base64String = imageUrl.split(',')[1];
+        final bytes = base64Decode(base64String);
+        return Image.memory(
+          bytes,
+          width: 50,
+          height: 65,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => Container(
+            width: 50,
+            height: 65,
+            color: Colors.grey.shade200,
+            child: const Icon(Icons.menu_book, color: Color(0xFFFFC107)),
+          ),
+        );
+      } catch (e) {
+        return Container(
+          width: 50,
+          height: 65,
+          color: Colors.grey.shade200,
+          child: const Icon(Icons.menu_book, color: Color(0xFFFFC107)),
+        );
+      }
+    } else if (isHttp) {
+      return Image.network(
+        imageUrl,
+        width: 50,
+        height: 65,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => Container(
+          width: 50,
+          height: 65,
+          color: Colors.grey.shade200,
+          child: const Icon(Icons.menu_book, color: Color(0xFFFFC107)),
+        ),
+      );
+    } else {
+      return Container(
+        width: 50,
+        height: 65,
+        color: Colors.grey.shade200,
+        child: const Icon(Icons.menu_book, color: Color(0xFFFFC107)),
+      );
+    }
   }
 
   @override
@@ -94,40 +155,55 @@ class _MyListingsState extends State<MyListings> with SingleTickerProviderStateM
   }
 
   Widget _buildMyBooks() {
-    final prov = context.watch<BookProvider>();
-    return prov.mine.isEmpty
-        ? const Center(child: Text('You have not posted any books yet'))
-        : ListView.builder(
-            itemCount: prov.mine.length,
-            itemBuilder: (c, i) {
-              final b = prov.mine[i];
-              return BookCard(
-                title: b['title'] ?? '',
-                author: b['author'] ?? '',
-                condition: b['condition'] ?? 'New',
-                imageUrl: b['imageUrl'] ?? '',
-                status: b['status'] ?? '',
-                ownerActions: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.edit),
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => PostBookScreen(editing: b),
-                        ),
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    return StreamBuilder(
+      stream: FirestoreService.instance.booksByOwner(uid),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text('You have not posted any books yet'));
+        }
+        
+        final books = snapshot.data!.docs;
+        return ListView.builder(
+          itemCount: books.length,
+          itemBuilder: (c, i) {
+            final doc = books[i];
+            final b = {'id': doc.id, ...doc.data()};
+            return BookCard(
+              title: b['title'] ?? '',
+              author: b['author'] ?? '',
+              condition: b['condition'] ?? 'New',
+              imageUrl: b['imageUrl'] ?? '',
+              status: b['status'] ?? '',
+              ownerActions: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit),
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PostBookScreen(editing: b),
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.delete, color: Color.fromARGB(255, 137, 136, 136)),
-                      onPressed: () => _confirmDelete(context, prov, b),
-                    ),
-                  ],
-                ),
-              );
-            },
-          );
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: Color.fromARGB(255, 137, 136, 136)),
+                    onPressed: () => _confirmDelete(context, context.read<BookProvider>(), b),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Widget _buildMyOffers() {
@@ -174,7 +250,21 @@ class _MyListingsState extends State<MyListings> with SingleTickerProviderStateM
             return FutureBuilder<Map<String, dynamic>?>(
               future: FirestoreService.instance.getBookDetails(authorBookId),
               builder: (context, bookSnapshot) {
-                final bookName = bookSnapshot.data?['title'] ?? 'Unknown Book';
+                if (bookSnapshot.connectionState == ConnectionState.waiting) {
+                  return const Card(
+                    margin: EdgeInsets.only(bottom: 12),
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                  );
+                }
+                
+                final bookData = bookSnapshot.data;
+                final bookTitle = bookData?['title'] ?? 'Unknown Book';
+                final bookAuthor = bookData?['author'] ?? 'Unknown Author';
+                final bookCondition = bookData?['condition'] ?? 'Unknown';
+                final bookImageUrl = bookData?['imageUrl'] ?? '';
                 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
@@ -186,13 +276,10 @@ class _MyListingsState extends State<MyListings> with SingleTickerProviderStateM
                       children: [
                         Row(
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFFFC107),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.swap_horiz, color: Color(0xFF0A0A23)),
+                            // Book thumbnail
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: _buildBookThumbnail(bookImageUrl),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -200,17 +287,31 @@ class _MyListingsState extends State<MyListings> with SingleTickerProviderStateM
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    bookName,
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                    'You want to GET:',
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
                                   Text(
-                                    'User ID: ${offer['userId'] ?? offer['senderId'] ?? 'Unknown'}',
-                                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                                    bookTitle,
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    'by $bookAuthor',
+                                    style: TextStyle(color: Colors.grey[600], fontSize: 14, fontStyle: FontStyle.italic),
+                                  ),
+                                  Text(
+                                    'Condition: $bookCondition',
+                                    style: TextStyle(color: Colors.grey[700], fontSize: 12),
                                   ),
                                   if (date != null)
                                     Text(
-                                      '${date.day}/${date.month}/${date.year}',
-                                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                                      'Offered on ${date.day}/${date.month}/${date.year}',
+                                      style: TextStyle(color: Colors.grey[500], fontSize: 12),
                                     ),
                                 ],
                               ),
@@ -220,6 +321,7 @@ class _MyListingsState extends State<MyListings> with SingleTickerProviderStateM
                               decoration: BoxDecoration(
                                 color: _getStatusColor(status).withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: _getStatusColor(status), width: 1),
                               ),
                               child: Text(
                                 status,
@@ -289,7 +391,21 @@ class _MyListingsState extends State<MyListings> with SingleTickerProviderStateM
             return FutureBuilder<Map<String, dynamic>?>(
               future: FirestoreService.instance.getBookDetails(authorBookId),
               builder: (context, bookSnapshot) {
-                final bookName = bookSnapshot.data?['title'] ?? 'Unknown Book';
+                if (bookSnapshot.connectionState == ConnectionState.waiting) {
+                  return const Card(
+                    margin: EdgeInsets.only(bottom: 12),
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                  );
+                }
+                
+                final bookData = bookSnapshot.data;
+                final bookTitle = bookData?['title'] ?? 'Unknown Book';
+                final bookAuthor = bookData?['author'] ?? 'Unknown Author';
+                final bookCondition = bookData?['condition'] ?? 'Unknown';
+                final bookImageUrl = bookData?['imageUrl'] ?? '';
                 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
@@ -301,13 +417,10 @@ class _MyListingsState extends State<MyListings> with SingleTickerProviderStateM
                       children: [
                         Row(
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF0A0A23),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.person, color: Color(0xFFFFC107)),
+                            // Book thumbnail
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: _buildBookThumbnail(bookImageUrl),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -315,17 +428,31 @@ class _MyListingsState extends State<MyListings> with SingleTickerProviderStateM
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    bookName,
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                    'Someone wants YOUR book:',
+                                    style: TextStyle(
+                                      color: Colors.blue[600],
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
                                   Text(
-                                    'Author ID: ${offer['authorId'] ?? offer['receiverId'] ?? 'Unknown'}',
-                                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                                    bookTitle,
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    'by $bookAuthor',
+                                    style: TextStyle(color: Colors.grey[600], fontSize: 14, fontStyle: FontStyle.italic),
+                                  ),
+                                  Text(
+                                    'Condition: $bookCondition',
+                                    style: TextStyle(color: Colors.grey[700], fontSize: 12),
                                   ),
                                   if (date != null)
                                     Text(
-                                      '${date.day}/${date.month}/${date.year}',
-                                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                                      'Received ${date.day}/${date.month}/${date.year}',
+                                      style: TextStyle(color: Colors.grey[500], fontSize: 12),
                                     ),
                                 ],
                               ),
@@ -335,6 +462,7 @@ class _MyListingsState extends State<MyListings> with SingleTickerProviderStateM
                               decoration: BoxDecoration(
                                 color: _getStatusColor(status).withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: _getStatusColor(status), width: 1),
                               ),
                               child: Text(
                                 status,

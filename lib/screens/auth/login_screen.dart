@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import 'signup_screen.dart';
 import 'verify_email_screen.dart';
-import '../../main.dart' show MainNav; // ✅ ADDED: to navigate to your main app shell
+import '../../main.dart' show MainNav; // ADDED: to navigate to your main app shell
 
 class LoginScreen extends StatefulWidget {
   static const route = '/login';
@@ -18,7 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   bool _loading = false;
-  bool _obscure = true; // 👁️
+  bool _obscure = true; // 
 
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
@@ -90,8 +90,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     labelText: 'Email',
                     prefixIcon: Icon(Icons.email_outlined),
                   ),
-                  validator: (v) =>
-                      v == null || !v.contains('@') ? 'Enter a valid email' : null,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Email is required';
+                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v.trim())) {
+                      return 'Enter a valid email address';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
@@ -105,7 +110,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       onPressed: () => setState(() => _obscure = !_obscure), // 👁️
                     ),
                   ),
-                  validator: (v) => v == null || v.length < 6 ? 'Min 6 characters' : null,
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'Password is required';
+                    if (v.length < 6) return 'Password must be at least 6 characters';
+                    return null;
+                  },
                 ),
                 Align(
                   alignment: Alignment.centerRight,

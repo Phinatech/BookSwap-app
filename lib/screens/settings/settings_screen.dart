@@ -164,11 +164,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: Text(
               'BookSwap helps students exchange textbooks easily. '
               'Browse listings, post your books with cover images, and initiate swaps. '
-              'Real-time updates, optional chat, and email verification keep things safe.\n'
+              'Real-time updates, optional chat, and email verification keep things safe.'
             ),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           ElevatedButton(
             onPressed: () async {
               await auth.signOut();

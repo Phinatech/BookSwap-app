@@ -1,5 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 
+/// Firebase Authentication service wrapper
+/// Handles user authentication, email verification, and password reset
 class AuthService {
   final _auth = FirebaseAuth.instance;
 
@@ -25,6 +27,10 @@ class AuthService {
         message: 'No signed-in user or already verified.',
       );
     }
+  }
+
+  Future<void> reloadUser() async {
+    await _auth.currentUser?.reload();
   }
 
   // (From earlier steps, if you added forgot password)

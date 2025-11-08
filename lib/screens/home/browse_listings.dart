@@ -22,31 +22,19 @@ class BrowseListings extends StatelessWidget {
               itemBuilder: (c, i) {
                 final b = prov.browse[i];
                 final status = b['status'] ?? '';
-                
-                // Skip books with pending status
-                if (status.toLowerCase() == 'pending') {
-                  return const SizedBox.shrink();
-                }
-
                 final createdAt = b['createdAt']?.toDate() ?? DateTime.now();
+                final currentUserId = context.read<AuthService>().currentUser?.uid;
+                final isOwnBook = b['ownerId'] == currentUserId;
+                final isPending = status.toLowerCase().contains('pending');
+                
                 return BookCard(
                   title: b['title'] ?? '',
                   author: b['author'] ?? '',
                   condition: b['condition'] ?? 'New',
                   imageUrl: b['imageUrl'] ?? '',
                   secondary: DateFormat.yMMMd().format(createdAt),
-                  status: b['status'] ?? '',
-                  onSwap: () {
-                    final currentUserId = context.read<AuthService>().currentUser?.uid;
-                    if (b['ownerId'] == currentUserId) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('You cannot swap your own book'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                      return;
-                    }
+                  status: status,
+                  onSwap: isOwnBook || isPending ? null : () {
                     showModalBottomSheet(
                       context: context,
                       isScrollControlled: true,

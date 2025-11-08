@@ -34,23 +34,22 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   Future<void> _refreshAndContinue() async {
     setState(() => _loading = true);
     try {
-      final user = FirebaseAuth.instance.currentUser;
-
-      // IMPORTANT: you cannot `await user?.reload()`
-      if (user != null) {
-        await user.reload(); // ✅ valid
-      }
-
-      final refreshed = FirebaseAuth.instance.currentUser;
-      final verified = refreshed?.emailVerified ?? false;
+      final auth = context.read<AuthService>();
+      await auth.reloadUser();
+      
+      final user = auth.currentUser;
+      final verified = user?.emailVerified ?? false;
 
       if (!mounted) return;
       if (verified) {
-        // Let your AuthGate (StreamBuilder) pick it up
-        Navigator.of(context).maybePop();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Email verified!')),
         );
+        // Force a sign out and navigate to welcome screen
+        await auth.signOut();
+        if (!mounted) return;
+        // Force navigation to root (AuthGate will handle routing)
+        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Not verified yet. Please click the link in your email.')),

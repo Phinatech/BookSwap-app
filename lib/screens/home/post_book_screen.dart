@@ -60,7 +60,7 @@ class _PostBookScreenState extends State<PostBookScreen> {
             const SizedBox(height: 12),
             TextFormField(controller: _author, validator: _req, decoration: const InputDecoration(labelText: 'Author')),
             const SizedBox(height: 12),
-            TextFormField(controller: _swapFor, decoration: const InputDecoration(labelText: 'Swap For')),
+            TextFormField(controller: _swapFor, validator: _validateSwapFor, decoration: const InputDecoration(labelText: 'Swap For')),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _condition,
@@ -148,7 +148,17 @@ _loading
     );
   }
 
-  String? _req(String? v) => (v == null || v.trim().isEmpty) ? 'Required' : null;
+  String? _req(String? v) {
+    if (v == null || v.trim().isEmpty) return 'This field is required';
+    if (v.trim().length < 2) return 'Must be at least 2 characters';
+    return null;
+  }
+
+  String? _validateSwapFor(String? v) {
+    if (v == null || v.trim().isEmpty) return 'Please specify what you want in exchange';
+    if (v.trim().length < 3) return 'Please be more specific (min 3 characters)';
+    return null;
+  }
 
   Future<Widget> _buildImagePreview() async {
     if (_image == null) return const SizedBox();

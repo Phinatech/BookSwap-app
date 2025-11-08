@@ -14,7 +14,9 @@ import 'screens/home/browse_listings.dart';
 import 'screens/home/my_listings.dart';
 import 'screens/chat/threads_screen.dart';
 import 'screens/settings/settings_screen.dart';
-import 'screens/auth/welcome_screen.dart'; // 
+import 'screens/auth/welcome_screen.dart';
+import 'screens/auth/verify_email_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,6 +34,7 @@ Future<void> main() async {
   runApp(const BookSwapApp());
 }
 
+/// Main application widget with Provider setup and theme configuration
 class BookSwapApp extends StatelessWidget {
   const BookSwapApp({super.key});
 
@@ -52,7 +55,7 @@ class BookSwapApp extends StatelessWidget {
             theme: themeProvider.lightTheme,
             darkTheme: themeProvider.darkTheme,
             themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-            home: const WelcomeScreen(),
+            home: const AuthGate(),
             routes: {
               LoginScreen.route: (_) => const LoginScreen(),
               SignupScreen.route: (_) => const SignupScreen(),
@@ -64,8 +67,49 @@ class BookSwapApp extends StatelessWidget {
   }
 }
 
+/// Authentication gate that routes users based on auth state:
+/// Not authenticated → WelcomeScreen
+/// Authenticated but unverified → VerifyEmailScreen  
+/// Authenticated and verified → MainNav
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
 
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.read<AuthService>();
+    return StreamBuilder<User?>(
+      stream: auth.authStateChanges,
+      builder: (context, snapshot) {
+        debugPrint('AuthGate - Connection state: ${snapshot.connectionState}');
+        debugPrint('AuthGate - Has data: ${snapshot.hasData}');
+        debugPrint('AuthGate - User: ${snapshot.data?.email}');
+        debugPrint('AuthGate - Email verified: ${snapshot.data?.emailVerified}');
+        
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        
+        if (!snapshot.hasData) {
+          debugPrint('AuthGate - Showing WelcomeScreen');
+          return const WelcomeScreen();
+        }
+        
+        final user = auth.currentUser!;
+        if (!user.emailVerified) {
+          debugPrint('AuthGate - Showing VerifyEmailScreen');
+          return const VerifyEmailScreen();
+        }
+        
+        debugPrint('AuthGate - Showing MainNav');
+        return const MainNav();
+      },
+    );
+  }
+}
 
+/// Main navigation with bottom tab bar for authenticated users
 class MainNav extends StatefulWidget {
   const MainNav({super.key});
 

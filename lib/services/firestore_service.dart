@@ -119,10 +119,20 @@ class FirestoreService {
   }
 
   Future<void> updateOfferStatus(String offerId, String status) async {
+    // Get the swap data first to find the book
+    final swapRef = _db.collection('swaps').doc(offerId);
+    final swapDoc = await swapRef.get();
+    
+    if (!swapDoc.exists) {
+      throw Exception('Swap not found');
+    }
+    
+    final swapData = swapDoc.data()!;
+    final bookId = swapData['authorBookId'] as String;
+    
     final batch = _db.batch();
     
     // Update the swap status with timestamp
-    final swapRef = _db.collection('swaps').doc(offerId);
     final updateData = <String, dynamic>{'status': status};
     
     if (status == 'accepted') {
@@ -135,22 +145,24 @@ class FirestoreService {
     
     batch.update(swapRef, updateData);
     
-    // Get the swap data to find the book
-    final swapDoc = await swapRef.get();
-    if (swapDoc.exists) {
-      final data = swapDoc.data()!;
-      final bookId = data['authorBookId'] as String;
-      final bookRef = _db.collection('books').doc(bookId);
-      
-      // Update book status based on swap decision
-      if (status == 'accepted') {
-        batch.update(bookRef, {'status': 'Swap Accepted'});
-      } else if (status == 'rejected') {
-        batch.update(bookRef, {'status': 'Swap Rejected'});
-      } else if (status == 'returned') {
-        batch.update(bookRef, {'status': 'Available'});
-      }
+    // Update book status based on swap decision
+    final bookRef = _db.collection('books').doc(bookId);
+    String bookStatus;
+    
+    if (status == 'accepted') {
+      bookStatus = 'Swap Accepted';
+    } else if (status == 'rejected') {
+      bookStatus = 'Available';
+    } else if (status == 'returned') {
+      bookStatus = 'Available';
+    } else {
+      bookStatus = 'Swap Pending';
     }
+    
+    batch.update(bookRef, {
+      'status': bookStatus,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
     
     await batch.commit();
   }

@@ -1,22 +1,16 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 
-class NotificationService {
-  static final NotificationService _instance = NotificationService._internal();
-  factory NotificationService() => _instance;
-  NotificationService._internal();
+class FCMService {
+  static final _instance = FCMService._internal();
+  factory FCMService() => _instance;
+  FCMService._internal();
 
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
 
   Future<void> initialize() async {
-    if (kIsWeb) {
-      debugPrint('Web notifications not implemented');
-      return;
-    }
-
     // Request permission
     await _messaging.requestPermission(
       alert: true,
@@ -31,18 +25,29 @@ class NotificationService {
       android: androidSettings,
       iOS: iosSettings,
     );
-
+    
     await _localNotifications.initialize(initSettings);
-
-    // Get FCM token
-    final token = await _messaging.getToken();
-    debugPrint('FCM Token: $token');
 
     // Handle foreground messages
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+
+    // Handle background messages
+    FirebaseMessaging.onBackgroundMessage(_handleBackgroundMessage);
+
+    // Get FCM token
+    final token = await _messaging.getToken();
+    if (kDebugMode) {
+      print('FCM Token: $token');
+    }
   }
 
-  Future<void> _handleForegroundMessage(RemoteMessage message) async {
+  Future<String?> getToken() => _messaging.getToken();
+
+  void _handleForegroundMessage(RemoteMessage message) {
+    _showLocalNotification(message);
+  }
+
+  void _showLocalNotification(RemoteMessage message) {
     const androidDetails = AndroidNotificationDetails(
       'bookswap_channel',
       'BookSwap Notifications',
@@ -50,47 +55,20 @@ class NotificationService {
       importance: Importance.high,
       priority: Priority.high,
     );
-
+    
     const iosDetails = DarwinNotificationDetails();
     const details = NotificationDetails(android: androidDetails, iOS: iosDetails);
 
-    await _localNotifications.show(
+    _localNotifications.show(
       message.hashCode,
       message.notification?.title ?? 'BookSwap',
       message.notification?.body ?? 'New notification',
       details,
     );
   }
+}
 
-  Future<void> showLocalNotification({
-    required String title,
-    required String body,
-  }) async {
-    if (kIsWeb) {
-      debugPrint('Web notification: $title - $body');
-      return;
-    }
-
-    try {
-      const androidDetails = AndroidNotificationDetails(
-        'bookswap_channel',
-        'BookSwap Notifications',
-        channelDescription: 'Notifications for BookSwap app',
-        importance: Importance.high,
-        priority: Priority.high,
-      );
-
-      const iosDetails = DarwinNotificationDetails();
-      const details = NotificationDetails(android: androidDetails, iOS: iosDetails);
-
-      await _localNotifications.show(
-        DateTime.now().millisecondsSinceEpoch ~/ 1000,
-        title,
-        body,
-        details,
-      );
-    } catch (e) {
-      debugPrint('Failed to show notification: $e');
-    }
-  }
+@pragma('vm:entry-point')
+Future<void> _handleBackgroundMessage(RemoteMessage message) async {
+  print('Background message: ${message.messageId}');
 }

@@ -93,65 +93,88 @@ class BookCard extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: ListTile(
-        leading: ClipRRect(borderRadius: BorderRadius.circular(8), child: thumb),
-        title: Text(
-          title,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
           children: [
-            RichText(
-              text: TextSpan(
+            ClipRRect(borderRadius: BorderRadius.circular(8), child: thumb),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextSpan(
-                    text: 'Author: ',
-                    style: TextStyle(
-                      color: Theme.of(context).textTheme.bodyMedium?.color,
-                      fontSize: 12,
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
                     ),
                   ),
-                  TextSpan(
-                    text: author,
+                  const SizedBox(height: 4),
+                  Text(
+                    'Author: $author',
                     style: TextStyle(
                       fontSize: 12,
                       fontStyle: FontStyle.italic,
                       color: Theme.of(context).textTheme.bodySmall?.color,
                     ),
                   ),
+                  Text(
+                    'Condition: $condition',
+                    style: TextStyle(
+                      color: _getConditionColor(condition),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                  ),
+                  if (secondary != null) Text(
+                    secondary!,
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  if (status != null && status!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: status!.toLowerCase().contains('pending') 
+                              ? Colors.orange.withOpacity(0.2)
+                              : const Color(0xFFFFC107).withOpacity(.2),
+                          borderRadius: BorderRadius.circular(12),
+                          border: status!.toLowerCase().contains('pending')
+                              ? Border.all(color: Colors.orange, width: 1.5)
+                              : null,
+                        ),
+                        child: Text(
+                          status!,
+                          style: TextStyle(
+                            color: status!.toLowerCase().contains('pending')
+                                ? Colors.orange.shade800
+                                : Colors.black87,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
-            Text(
-              'Condition: $condition',
-              style: TextStyle(
-                color: _getConditionColor(condition),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            if (secondary != null) Text(secondary!, style: const TextStyle(fontSize: 12)),
-            if (status != null && status!.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Chip(
-                  label: Text(status!),
-                  visualDensity: VisualDensity.compact,
-                  backgroundColor: const Color(0xFFFFC107).withOpacity(.2),
+            const SizedBox(width: 8),
+            ownerActions ??
+                ElevatedButton(
+                  onPressed: onSwap,
+                  style: onSwap == null ? ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey.shade300,
+                    foregroundColor: Colors.grey.shade600,
+                  ) : null,
+                  child: Text(
+                    onSwap == null ? 'Unavailable' : 'Swap',
+                    style: const TextStyle(fontSize: 11),
+                  ),
                 ),
-              ),
           ],
         ),
-        trailing: ownerActions ??
-            ElevatedButton(
-              onPressed: onSwap,
-              child: const Text('Swap'),
-            ),
       ),
     );
   }

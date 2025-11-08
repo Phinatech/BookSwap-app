@@ -68,8 +68,13 @@ class _SignupScreenState extends State<SignupScreen> {
                     labelText: 'Email',
                     prefixIcon: Icon(Icons.email_outlined),
                   ),
-                  validator: (v) =>
-                      v == null || !v.contains('@') ? 'Enter a valid email' : null,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Email is required';
+                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v.trim())) {
+                      return 'Enter a valid email address';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
@@ -83,7 +88,14 @@ class _SignupScreenState extends State<SignupScreen> {
                       onPressed: () => setState(() => _obscurePwd = !_obscurePwd), // 👁️
                     ),
                   ),
-                  validator: (v) => v == null || v.length < 6 ? 'Min 6 characters' : null,
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'Password is required';
+                    if (v.length < 6) return 'Password must be at least 6 characters';
+                    if (!RegExp(r'^(?=.*[a-zA-Z])(?=.*\d)').hasMatch(v)) {
+                      return 'Password must contain letters and numbers';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
@@ -97,7 +109,11 @@ class _SignupScreenState extends State<SignupScreen> {
                       onPressed: () => setState(() => _obscureCfm = !_obscureCfm), // 👁️
                     ),
                   ),
-                  validator: (v) => v != _password.text ? 'Passwords do not match' : null,
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'Please confirm your password';
+                    if (v != _password.text) return 'Passwords do not match';
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 6),
                 _loading
