@@ -370,11 +370,11 @@ This project is for educational purposes as part of a mobile development course 
 *Mobile Development Student*
 
 Developed as a comprehensive Flutter application demonstrating:
-- 🔥 Firebase integration and real-time data synchronization
-- 📱 Provider state management pattern
-- 🌐 Cross-platform mobile development
-- 🎨 Modern UI/UX design principles
-- 🏗️ Production-ready code architecture
+- Firebase integration and real-time data synchronization
+- Provider state management pattern
+- Cross-platform mobile development
+- Modern UI/UX design principles
+- Production-ready code architecture
 
 ---
 
