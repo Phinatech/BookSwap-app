@@ -2,27 +2,17 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-
-// State management
 import 'package:provider/provider.dart';
-
-// Services - Firebase integration layer
 import 'services/auth_service.dart';
 import 'services/notification_service.dart';
 import 'services/message_listener.dart';
-
-// Providers - State management layer
 import 'providers/book_provider.dart';
 import 'providers/chat_provider.dart';
 import 'providers/theme_provider.dart';
-
-// Screen imports - Authentication flow
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/signup_screen.dart';
 import 'screens/auth/welcome_screen.dart';
 import 'screens/auth/verify_email_screen.dart';
-
-// Screen imports - Main app screens
 import 'screens/home/browse_listings.dart';
 import 'screens/home/my_listings.dart';
 import 'screens/chat/threads_screen.dart';
@@ -32,7 +22,7 @@ import 'screens/settings/settings_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 /// Application entry point
-/// Initializes Firebase, notification services, and starts the app
+
 Future<void> main() async {
   // Ensure Flutter framework is initialized before Firebase
   WidgetsFlutterBinding.ensureInitialized();
@@ -49,8 +39,6 @@ Future<void> main() async {
   } catch (e) {
     debugPrint('Notification service failed to initialize: $e');
   }
-  
-  // Start the Flutter application
   runApp(const BookSwapApp());
 }
 
