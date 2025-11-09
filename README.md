@@ -382,4 +382,5 @@ Developed as a comprehensive Flutter application demonstrating:
 *Last Updated: December 2024*-
 
 **Built using Flutter & Firebase**
-<img width="500" height="1732" alt="image" src="https://github.com/user-attachments/assets/310d3260-0950-4a91-98d6-a5da68de37f8" />
+
+<img width="450" height="1500" alt="image" src="https://github.com/user-attachments/assets/310d3260-0950-4a91-98d6-a5da68de37f8" />
